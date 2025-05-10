@@ -33,5 +33,6 @@ jobs:
 
       - name: Build and Push Frontend
         run: |
-          docker build -t avyayregistry.azurecr.io/avyay-frontend:latest ./frontend
-          docker push avyayregistry.azurecr.io/avyay-frontend:latest
+          docker buildx create --use --name tempbuilder 2>/dev/null || docker buildx use tempbuilder
+          docker buildx build --platform linux/amd64 -t avyayregistry.azurecr.io/avyay-frontend:latest ./frontend --push
+
