@@ -1,23 +1,38 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: avyay-backend
+  name: backend-deployment
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
-      app: avyay-backend
+      app: backend
   template:
     metadata:
       labels:
-        app: avyay-backend
+        app: backend
     spec:
       containers:
         - name: backend
-          image: avyayregistry.azurecr.io/avyay-backend:latest
+          image: youracr.azurecr.io/fastapi-backend:latest
           ports:
             - containerPort: 8000
           env:
-            - name: PORT
-              value: "8000"
-            # Add DB_URL or REDIS_URL here if needed
+            - name: DB_HOST
+              value: your-azure-postgres-host
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: avyay
+            - name: DB_USER
+              value: avyay_user
+            - name: DB_PASS
+              value: avyay123
+            - name: REDIS_HOST
+              value: your-azure-redis-host
+            - name: REDIS_PORT
+              value: "6379"
+            - name: JWT_SECRET
+              value: avyaysecret
+            - name: RATE_LIMIT_MODE
+              value: fixed
