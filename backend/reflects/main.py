@@ -1,21 +1,19 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Form, File, UploadFile
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr, constr
 from typing import Optional, Literal
 from datetime import datetime
-
 from reflects.db import get_db_connection
 from reflects.auth import create_access_token, get_current_user
 from reflects.redis_client import hybrid_rate_limiter
-from reflects.s3_utils import upload_to_s3  # you’ll define this below
+from azure.storage.blob import BlobServiceClient
 import os
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
 
-from fastapi.staticfiles import StaticFiles
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-
+# Middleware for CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],  # Or ["*"] if you want wide open for testing
@@ -24,9 +22,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Static files mounting for uploads directory
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 
 # --- 1. User Management ---
-
 class UserCreate(BaseModel):
     name: constr(min_length=1, max_length=50)
     email: EmailStr
@@ -67,10 +67,6 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
         cur.close()
         conn.close()
 
-#@app.get("/me")
-#def read_me(user = Depends(get_current_user)):
-#    return {"user_id": user["user_id"], "role": user["role"]}
-
 @app.get("/me")
 def read_me(user = Depends(get_current_user)):
     conn = get_db_connection()
@@ -89,7 +85,6 @@ def read_me(user = Depends(get_current_user)):
     finally:
         cur.close()
         conn.close()
-
 
 class UserUpdate(BaseModel):
     name: Optional[constr(min_length=1, max_length=50)] = None
@@ -115,14 +110,38 @@ def update_user(updates: UserUpdate, user = Depends(get_current_user)):
         cur.close()
         conn.close()
 
-# --- Reflections ---
-class ReflectionCreate(BaseModel):
-    chapter_id: int
-    video_url: constr(min_length=10, max_length=300)
-    text_summary: Optional[constr(max_length=500)] = None
 
+# --- File Uploads ---
+def upload_to_azure(file, object_name):
+    """
+    Upload a file to Azure Blob Storage using SAS Token
+    :param file: FastAPI UploadFile object.
+    :param object_name: Object name in Azure Blob Storage.
+    :return: URL of the uploaded file.
+    """
+    # Retrieve SAS token and container name from environment variables
+    sas_token = os.getenv("AZURE_SAS_TOKEN")
+    container_name = os.getenv("AZURE_STORAGE_CONTAINER_NAME", "uploads")  # Default to "uploads"
+    connection_string = os.getenv("AZURE_STORAGE_CONNECTION_STRING")  # Optional if you're using SAS
 
-from fastapi import Form, File, UploadFile
+    try:
+        # Create BlobServiceClient using SAS token and connection string
+        blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+
+        # Construct the full blob URL with SAS Token
+        blob_url = f"https://{blob_service_client.account_name}.blob.core.windows.net/{container_name}/{object_name}?{sas_token}"
+
+        # Get a reference to the container and blob client
+        container_client = blob_service_client.get_container_client(container_name)
+        blob_client = container_client.get_blob_client(object_name)
+
+        # Upload the file to Azure Blob Storage
+        blob_client.upload_blob(file.file, overwrite=True)
+
+        return blob_url  # Return the URL of the uploaded file
+
+    except Exception as e:
+        raise Exception(f"Error uploading to Azure Blob Storage: {str(e)}")
 
 ENV = os.getenv("ENV", "local")  # set ENV=production on your EC2/s3 setup
 
@@ -137,8 +156,8 @@ def submit_reflection(
         raise HTTPException(status_code=429, detail="Reflection rate limit reached.")
 
     if ENV == "production":
-        # ✅ Upload to S3
-        video_url = upload_to_s3(video_file, f"{user['user_id']}_{chapter_id}")
+        # ✅ Upload to Azure Blob Storage
+        video_url = upload_to_azure(video_file, f"{user['user_id']}_{chapter_id}")
     else:
         # ✅ Save locally
         os.makedirs("uploads", exist_ok=True)
@@ -173,7 +192,6 @@ def submit_reflection(
         conn.close()
 
 
-
 @app.get("/chapters")
 def get_chapters():
     conn = get_db_connection()
@@ -186,15 +204,6 @@ def get_chapters():
         cur.close()
         conn.close()
 
-
-from typing import List
-
-class ReflectionOut(BaseModel):
-    id: int
-    chapter_id: int
-    video_url: str
-    text_summary: Optional[str]
-    submitted_at: str
 
 @app.get("/my-reflections")
 def get_my_reflections(user = Depends(get_current_user)):
@@ -222,7 +231,6 @@ def get_my_reflections(user = Depends(get_current_user)):
         cur.close()
         conn.close()
 
-
 @app.get("/students/emails")
 def get_student_emails(user=Depends(get_current_user)):
     if user["role"] != "teacher":
@@ -237,10 +245,6 @@ def get_student_emails(user=Depends(get_current_user)):
     finally:
         cur.close()
         conn.close()
-
-
-from fastapi import Query
-from fastapi import Body
 
 
 @app.get("/all-reflections")
@@ -329,8 +333,6 @@ def submit_feedback(
         cur.close()
         conn.close()
 
-
-from fastapi import Query
 
 @app.get("/teacher/feedback")
 def get_teacher_feedback(
