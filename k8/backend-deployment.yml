@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: avyay-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: avyay-backend
+  template:
+    metadata:
+      labels:
+        app: avyay-backend
+    spec:
+      containers:
+        - name: backend
+          image: avyayregistry.azurecr.io/avyay-backend:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: PORT
+              value: "8000"
+            # Add DB_URL or REDIS_URL here if needed
