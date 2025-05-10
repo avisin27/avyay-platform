@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: avyayregistry.azurecr.io/avyay-backend:latest
+          image: reflectacr.azurecr.io/avyay-backend:latest
           ports:
             - containerPort: 8000
           env:
@@ -36,5 +36,3 @@ spec:
               value: avyaysecret
             - name: RATE_LIMIT_MODE
               value: fixed
-      imagePullSecrets:
-        - name: acr-auth
