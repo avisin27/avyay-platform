@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="config.js"></script>
+  <title>Dashboard</title>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+  <div class="bg-white p-8 rounded-xl shadow-md w-full max-w-md text-center space-y-6">
+    <h2 class="text-2xl font-bold text-gray-800">Welcome!</h2>
+    <p id="user-email" class="text-gray-600">Loading your info...</p>
+
+    <div id="dashboard-links" class="space-y-4"></div>
+
+    <!-- Password Edit Form -->
+    <form id="edit-form" class="space-y-4 mt-6 hidden text-left">
+      <label class="block text-sm text-gray-700">New Password</label>
+      <input type="password" id="new-password" class="w-full px-4 py-2 border rounded-lg" required />
+
+      <label class="block text-sm text-gray-700">Confirm Password</label>
+      <input type="password" id="confirm-password" class="w-full px-4 py-2 border rounded-lg" required />
+
+      <button type="submit" class="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700">
+        Save New Password
+      </button>
+    </form>
+  </div>
+
+  <script>
+    const token = localStorage.getItem("token");
+    if (!token) {
+      window.location.href = "login.html";
+    }
+
+    function logout() {
+      localStorage.removeItem("token");
+      window.location.href = "/";
+    }
+
+    function toggleEditForm() {
+      document.getElementById("edit-form").classList.toggle("hidden");
+    }
+
+    document.getElementById("edit-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const newPassword = document.getElementById("new-password").value;
+      const confirmPassword = document.getElementById("confirm-password").value;
+
+      if (newPassword !== confirmPassword) {
+        alert("Passwords do not match.");
+        return;
+      }
+
+      const res = await fetch(`${API_BASE}/update-user`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ password: newPassword })
+      });
+
+      const text = await res.text();
+      try {
+        const data = JSON.parse(text);
+        if (res.ok) {
+          alert("Password updated successfully!");
+          document.getElementById("edit-form").reset();
+          toggleEditForm();
+        } else {
+          alert(data.detail || "Failed to update.");
+        }
+      } catch (err) {
+        console.error("Unexpected response:", text);
+        alert("Something went wrong.");
+      }
+    });
+
+    async function fetchUser() {
+      const res = await fetch(`${API_BASE}/me`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      if (!res.ok) {
+        localStorage.removeItem("token");
+        window.location.href = "/";
+        return;
+      }
+
+      const user = await res.json();
+      document.getElementById("user-email").textContent = `Logged in as: ${user.email}`;
+      renderDashboard(user.role);
+    }
+
+    function renderDashboard(role) {
+      const container = document.getElementById("dashboard-links");
+      container.innerHTML = "";
+
+      if (role === "student") {
+        container.innerHTML += `
+          <a href="submit.html" class="block w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">Submit Reflection</a>
+          <a href="my-reflections.html" class="block w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700">View My Submissions</a>
+        `;
+      }
+
+      if (role === "teacher") {
+        container.innerHTML += `
+          <a href="teacher-refs.html" class="block w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">View All Reflections</a>
+        `;
+      }
+
+      container.innerHTML += `
+        <button onclick="toggleEditForm()" class="block w-full bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600">Edit Password</button>
+        <button onclick="logout()" class="block w-full bg-red-500 text-white py-2 rounded-lg hover:bg-red-600">Logout</button>
+      `;
+    }
+
+    fetchUser();
+  </script>
+</body>
+</html>

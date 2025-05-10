@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="config.js"></script>
+  <title>Login / Signup</title>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+
+  <div class="bg-white p-8 rounded-xl shadow-md w-full max-w-md space-y-6">
+    <h2 id="form-title" class="text-2xl font-bold text-center text-gray-800">Login</h2>
+
+    <form id="auth-form" class="space-y-4">
+      <input name="email" type="email" placeholder="Email"
+             class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+
+      <input name="password" type="password" placeholder="Password"
+             class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+
+      <!-- Signup-only fields -->
+      <div id="signup-fields" class="space-y-4 hidden">
+        <input name="name" placeholder="Full Name"
+               class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+
+        <select name="role"
+                class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="student">Student</option>
+          <option value="teacher">Teacher</option>
+        </select>
+
+        <input name="confirm_password" type="password" placeholder="Confirm Password"
+               class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+
+      <button type="submit"
+              class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
+        <span id="submit-text">Login</span>
+      </button>
+    </form>
+
+    <p class="text-center text-sm text-gray-500">
+      <span id="toggle-text">Don't have an account?</span>
+      <button id="toggle-button" class="text-blue-600 hover:underline ml-1">Sign up</button>
+    </p>
+  </div>
+
+  <script>
+    const formTitle = document.getElementById("form-title");
+    const submitText = document.getElementById("submit-text");
+    const toggleText = document.getElementById("toggle-text");
+    const toggleButton = document.getElementById("toggle-button");
+    const signupFields = document.getElementById("signup-fields");
+
+    let isLogin = true;
+
+    toggleButton.addEventListener("click", () => {
+      isLogin = !isLogin;
+      formTitle.textContent = isLogin ? "Login" : "Sign Up";
+      submitText.textContent = isLogin ? "Login" : "Create Account";
+      toggleText.textContent = isLogin ? "Don't have an account?" : "Already have an account?";
+      toggleButton.textContent = isLogin ? "Sign up" : "Login";
+      signupFields.classList.toggle("hidden", isLogin);
+
+      // Toggle `required` attributes for signup-only fields
+      const nameField = document.querySelector("input[name='name']");
+      const roleField = document.querySelector("select[name='role']");
+      const confirmField = document.querySelector("input[name='confirm_password']");
+
+      if (isLogin) {
+        nameField.removeAttribute("required");
+        roleField.removeAttribute("required");
+        confirmField.removeAttribute("required");
+      } else {
+        nameField.setAttribute("required", "required");
+        roleField.setAttribute("required", "required");
+        confirmField.setAttribute("required", "required");
+      }
+    });
+
+    document.getElementById("auth-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const form = e.target;
+      const email = form.email.value;
+      const password = form.password.value;
+
+      if (!isLogin) {
+        const name = form.name.value;
+        const role = form.role.value;
+        const confirm = form.confirm_password.value;
+
+        if (password !== confirm) {
+          alert("Passwords do not match.");
+          return;
+        }
+
+        const res = await fetch(`${API_BASE}/create-user`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, email, password, role })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          alert("Signup successful!");
+        } else {
+          alert(data.detail || "Signup failed.");
+        }
+
+      } else {
+        const formData = new URLSearchParams();
+        formData.append("username", email);
+        formData.append("password", password);
+
+      const res = await fetch(`${API_BASE}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData
+      });
+
+      if (res.ok) {
+        const data = await res.json(); // ✅ move this after res.ok
+        localStorage.setItem("token", data.access_token);
+        alert("Login successful!");
+
+        // Get user role
+        const userRes = await fetch(`${API_BASE}/me`, {
+          headers: { Authorization: `Bearer ${data.access_token}` }
+        });
+        const userInfo = await userRes.json();
+
+        if (userInfo.role === "teacher") {
+          window.location.href = "dashboard.html";
+        } else {
+          window.location.href = "dashboard.html";
+        }
+
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.detail || "Login failed.");
+      }
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>All Reflections</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="config.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-6">
+  <div class="max-w-5xl mx-auto bg-white p-6 rounded-xl shadow space-y-6">
+    <h1 class="text-2xl font-bold text-center">Teacher Dashboard – All Reflections</h1>
+
+    <!-- Filter Form -->
+    <form id="filter-form" class="flex flex-wrap gap-4 justify-center">
+      <select id="email-filter" class="px-4 py-2 border rounded-lg">
+        <option value="">All Students</option>
+      </select>
+      <select id="chapter-filter" class="px-4 py-2 border rounded-lg">
+        <option value="">All Chapters</option>
+      </select>
+      <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+        Filter
+      </button>
+    </form>
+
+    <!-- Reflection List -->
+    <div id="reflection-list" class="space-y-6"></div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem("token");
+    if (!token) window.location.href = "/";
+
+    const chapterMap = {};
+
+    function renderStaticFeedback(form, status, comment) {
+      const staticFeedback = document.createElement("div");
+      staticFeedback.className = "submitted-feedback space-y-2 mt-2";
+
+      staticFeedback.innerHTML = `
+        <div class="text-sm text-green-800"><strong>Status:</strong> ${status}</div>
+        <div class="text-sm text-gray-800"><strong>Comment:</strong> ${comment || "(No comment)"}</div>
+        <button class="edit-btn bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">Edit Feedback</button>
+      `;
+
+      form.style.display = "none";
+      form.parentNode.insertBefore(staticFeedback, form.nextSibling);
+
+      staticFeedback.querySelector(".edit-btn").addEventListener("click", () => {
+        form.style.display = "block";
+        staticFeedback.remove();
+      });
+    }
+
+    async function populateStudentEmails() {
+      const res = await fetch(`${API_BASE}/students/emails`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) return;
+      const emails = await res.json();
+      const select = document.getElementById("email-filter");
+      emails.forEach(email => {
+        const option = document.createElement("option");
+        option.value = email;
+        option.textContent = email;
+        select.appendChild(option);
+      });
+    }
+
+    async function populateChapters() {
+      const res = await fetch(`${API_BASE}/chapters`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) return;
+      const chapters = await res.json();
+      const select = document.getElementById("chapter-filter");
+      chapters.forEach(ch => {
+        chapterMap[ch.id] = ch.name;
+        const option = document.createElement("option");
+        option.value = ch.id;
+        option.textContent = ch.name || `Chapter ${ch.id}`;
+        select.appendChild(option);
+      });
+    }
+
+    async function fetchReflections(email = "", chapter = "") {
+      let url = `${API_BASE}/all-reflections`;
+      const params = [];
+      if (email) params.push(`email=${encodeURIComponent(email)}`);
+      if (chapter) params.push(`chapter_id=${chapter}`);
+      if (params.length) url += "?" + params.join("&");
+
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      const list = document.getElementById("reflection-list");
+      list.innerHTML = "";
+
+      if (!res.ok) {
+        list.innerHTML = "<p class='text-red-600'>Error loading reflections.</p>";
+        return;
+      }
+
+      const data = await res.json();
+      if (data.length === 0) {
+        list.innerHTML = "<p class='text-gray-500 text-center'>No reflections found.</p>";
+        return;
+      }
+
+      for (const ref of data) {
+        const card = document.createElement("div");
+        card.className = "p-6 border rounded-xl bg-gray-50 space-y-2";
+
+        const safeVideoURL = ref.video_url.startsWith("http")
+          ? ref.video_url
+          : `${API_BASE}${ref.video_url}`;
+
+        card.innerHTML = `
+          <div class="font-bold text-blue-800">Student: ${ref.email}</div>
+          <div class="text-sm text-gray-600">Chapter: ${chapterMap[ref.chapter_id] || "Chapter " + ref.chapter_id}</div>
+          <div class="aspect-w-16 aspect-h-9">
+            <video controls class="w-full rounded-lg">
+              <source src="${safeVideoURL}" type="video/mp4">
+              Your browser does not support the video tag.
+            </video>
+          </div>
+          <p class="text-gray-800 mt-2">${ref.text_summary || "(No summary)"}</p>
+          <div class="text-xs text-gray-400">Submitted: ${new Date(ref.submitted_at).toLocaleString()}</div>
+
+          <form class="feedback-form space-y-2 mt-4">
+            <label class="block text-sm font-medium text-gray-700">Feedback</label>
+            <select class="status w-full border px-3 py-2 rounded-lg">
+              <option value="understood" ${ref.status === "understood" ? "selected" : ""}>Understood</option>
+              <option value="needs_review" ${ref.status === "needs_review" ? "selected" : ""}>Needs Review</option>
+            </select>
+            <textarea class="comment w-full border px-3 py-2 rounded-lg" rows="2" placeholder="Comment (optional)">${ref.comment || ""}</textarea>
+            <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Submit Feedback</button>
+          </form>
+        `;
+
+        const form = card.querySelector(".feedback-form");
+        const commentInput = form.querySelector(".comment");
+        const statusSelect = form.querySelector(".status");
+
+        if (ref.status || ref.comment) {
+          renderStaticFeedback(form, ref.status, ref.comment);
+        }
+
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const status = statusSelect?.value;
+          const comment = commentInput?.value;
+
+          const fbRes = await fetch(`${API_BASE}/teacher/feedback`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              reflection_id: ref.id,
+              status,
+              comment
+            })
+          });
+
+          if (fbRes.ok) {
+            renderStaticFeedback(form, status, comment);
+            alert("Feedback submitted!");
+          } else {
+            const err = await fbRes.json();
+            alert("Error: " + err.detail);
+          }
+        });
+
+        list.appendChild(card);
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      populateChapters().then(() => fetchReflections());
+      populateStudentEmails();
+
+      document.getElementById("filter-form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const email = document.getElementById("email-filter").value;
+        const chapter = document.getElementById("chapter-filter").value;
+        fetchReflections(email, chapter);
+      });
+    });
+  </script>
+</body>
+</html>
