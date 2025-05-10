@@ -14,8 +14,6 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: avyayregistry.azurecr.io/avyay-frontend:latest
+          image: reflectacr.azurecr.io/avyay-frontend:latest
           ports:
             - containerPort: 80
-      imagePullSecrets:
-        - name: acr-auth
