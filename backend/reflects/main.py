@@ -10,6 +10,8 @@ from azure.storage.blob import BlobServiceClient
 import os
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi import Query
+from fastapi import Body
 
 app = FastAPI()
 
