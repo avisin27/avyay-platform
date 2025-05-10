@@ -27,8 +27,8 @@ jobs:
 
       - name: 🚀 Deploy to AKS
         run: |
-          kubectl apply -f k8s/backend-deployment.yaml
-          kubectl apply -f k8s/backend-service.yaml
-          kubectl apply -f k8s/frontend-deployment.yaml
-          kubectl apply -f k8s/frontend-service.yaml
-          kubectl apply -f k8s/ingress.yaml
+          kubectl apply -f k8/backend-deployment.yaml
+          kubectl apply -f k8/backend-service.yaml
+          kubectl apply -f k8/frontend-deployment.yaml
+          kubectl apply -f k8/frontend-service.yaml
+          kubectl apply -f k8/ingress.yaml
