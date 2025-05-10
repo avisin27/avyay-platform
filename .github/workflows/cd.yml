@@ -23,8 +23,8 @@ jobs:
         uses: azure/aks-set-context@v3
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-          cluster-name: avyay-aks
-          resource-group: avyay-rg
+          cluster-name: reflect-cluster
+          resource-group: reflect-rg
 
       - name: 🚀 Deploy to AKS
         run: |
