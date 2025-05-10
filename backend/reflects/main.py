@@ -23,7 +23,7 @@ app.add_middleware(
 )
 
 # Static files mounting for uploads directory
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+#app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 
 # --- 1. User Management ---
