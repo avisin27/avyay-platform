@@ -4,13 +4,29 @@ services:
   backend:
     build: ./backend
     container_name: fastapi-backend
-    ports:
-      - "8000:8000"
-    env_file:
-      - ./backend/.env
+    expose:
+      - "8000"
+    environment:
+      - DB_PORT=5432
+      - DB_NAME=avyay
+      - DB_USER=avyay_user
+      - DB_PASS=avyay123
+      - DB_HOST=host.docker.internal
+      - JWT_SECRET=avyaysecret
+      - REDIS_HOST=host.docker.internal
+      - REDIS_PORT=6379
+      - RATE_LIMIT_MODE=fixed
+    networks:
+      - app-network
 
   frontend:
     build: ./frontend
     container_name: simple-frontend
-    ports:
-      - "3000:3000"
+    expose:
+      - "80"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
