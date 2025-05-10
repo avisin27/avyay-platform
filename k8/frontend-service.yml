@@ -5,7 +5,7 @@ metadata:
   namespace: reflectns
 spec:
   selector:
-    app: avyay-frontend
+    app: frontend
   ports:
     - protocol: TCP
       port: 80
