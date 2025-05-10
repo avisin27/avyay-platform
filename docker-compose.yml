@@ -8,10 +8,10 @@ services:
       - "8000"
     environment:
       - DB_PORT=5432
-      - DB_NAME=avyay
-      - DB_USER=avyay_user
-      - DB_PASS=avyay123
-      - DB_HOST=host.docker.internal
+      - DB_NAME=reflectmain
+      - DB_USER=reflect
+      - DB_PASS=dyhcoC-0xodme-byfmum
+      - DB_HOST=reflectdb.postgres.database.azure.com
       - JWT_SECRET=avyaysecret
       - REDIS_HOST=reflectred.redis.cache.windows.net
       - REDIS_PORT=6380
