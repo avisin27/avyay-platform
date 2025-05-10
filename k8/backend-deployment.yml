@@ -17,6 +17,8 @@ spec:
           image: avyayregistry.azurecr.io/avyay-backend:latest
           ports:
             - containerPort: 8000
+      imagePullSecrets:
+        - name: acr-auth
           env:
             - name: DB_HOST
               value: your-azure-postgres-host
