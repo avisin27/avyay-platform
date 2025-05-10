@@ -6,3 +6,4 @@ python-jose==3.3.0
 redis==5.0.3
 python-multipart==0.0.9
 pydantic[email]==1.10.7
+azure-storage-blob==12.10.0  # Add this for Azure Blob Storage
