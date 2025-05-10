@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: avyayregistry.azurecr.io/avyay-backend:latest1
+          image: avyayregistry.azurecr.io/avyay-backend:latest
           ports:
             - containerPort: 8000
           env:
