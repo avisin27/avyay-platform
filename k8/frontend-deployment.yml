@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: avyay-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: avyay-frontend
+  template:
+    metadata:
+      labels:
+        app: avyay-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: avyayregistry.azurecr.io/avyay-frontend:latest
+          ports:
+            - containerPort: 80
