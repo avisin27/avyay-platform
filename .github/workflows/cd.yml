@@ -31,4 +31,4 @@ jobs:
           kubectl apply -f k8/backend-service.yml
           kubectl apply -f k8/frontend-deployment.yml
           kubectl apply -f k8/frontend-service.yml
-          kubectl apply -f k8/ingress.yml
+          kubectl apply -f k8/ingress.yaml
