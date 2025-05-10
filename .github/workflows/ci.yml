@@ -30,10 +30,9 @@ jobs:
 
       - name: Build and Push Backend
         run: |
-          docker build -t $ACR_LOGIN_SERVER/avyay-backend:latest ./backend
-          docker push $ACR_LOGIN_SERVER/avyay-backend:latest
+          docker buildx create --use || true
+          docker buildx build --platform linux/amd64 -t $ACR_LOGIN_SERVER/avyay-backend:latest1 ./backend --push
 
       - name: Build and Push Frontend
         run: |
-          docker build -t $ACR_LOGIN_SERVER/avyay-frontend:latest ./frontend
-          docker push $ACR_LOGIN_SERVER/avyay-frontend:latest
+          docker buildx build --platform linux/amd64 -t $ACR_LOGIN_SERVER/avyay-frontend:latest1 ./frontend --push
