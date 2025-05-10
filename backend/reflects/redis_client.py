@@ -5,13 +5,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Get Redis connection parameters from environment variables
 r = redis.Redis(
-    host=os.getenv("REDIS_HOST", "localhost"),
-    port=int(os.getenv("REDIS_PORT", 6379)),
-    decode_responses=True
+    host=os.getenv("REDIS_HOST"),  # No default, must be set in Docker Compose or the environment
+    port=int(os.getenv("REDIS_PORT", 6380)),  # Default to 6380 for Azure Redis SSL
+    password=os.getenv("REDIS_PASS"),  # Redis password from environment (must be set)
+    decode_responses=True,
+    ssl=True  # Enable SSL for secure connection to Azure Redis Cache
 )
 
-RATE_LIMIT_MODE = os.getenv("RATE_LIMIT_MODE", "fixed")  # "fixed" or "sliding"
+RATE_LIMIT_MODE = os.getenv("RATE_LIMIT_MODE", "fixed")
 
 def hybrid_rate_limiter(user_id: int, feature: str, limit: int):
     """
