@@ -1,29 +1,34 @@
-name: CD - Deploy to EC2
+name: CD - Deploy to AKS
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
   deploy:
-    name: Deploy to EC2
     runs-on: ubuntu-latest
-    needs: build  # ✅ waits for CI to succeed
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
+      - name: 🛎 Checkout Code
+        uses: actions/checkout@v3
 
-    - name: Set up SSH agent
-      uses: webfactory/ssh-agent@v0.9.0
-      with:
-        ssh-private-key: ${{ secrets.EC2_KEY }}
+      - name: 🔐 Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Deploy via SSH
-      run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-          cd avyay-reflects
-          git pull origin main
-          docker-compose down
-          docker-compose up --build -d
-        EOF
+      - name: ☸️ Set AKS context
+        uses: azure/aks-set-context@v3
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          cluster-name: avyay-aks
+          resource-group: avyay-rg
+
+      - name: 🚀 Deploy to AKS
+        run: |
+          kubectl apply -f k8s/backend-deployment.yaml
+          kubectl apply -f k8s/backend-service.yaml
+          kubectl apply -f k8s/frontend-deployment.yaml
+          kubectl apply -f k8s/frontend-service.yaml
+          kubectl apply -f k8s/ingress.yaml
