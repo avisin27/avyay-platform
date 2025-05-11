@@ -114,7 +114,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
     try:
         cur.execute("SELECT id, password, role FROM users WHERE email = %s", (form_data.username,))
         user = cur.fetchone()
-        if not user not verify_password(form_data.password, user[1]):
+        if not user or not verify_password(form_data.password, user[1]):
             raise HTTPException(status_code=401, detail="Invalid credentials")
         token = create_access_token({"user_id": user[0], "role": user[2]})
         return {"access_token": token, "token_type": "bearer"}
@@ -146,7 +146,8 @@ def update_user(updates: UserUpdate, user=Depends(get_current_user)):
         if updates.name:
             cur.execute("UPDATE users SET name = %s WHERE id = %s", (updates.name.strip(), user["user_id"]))
         if updates.password:
-            cur.execute("UPDATE users SET password = %s WHERE id = %s", (updates.password, user["user_id"]))
+            hashed_pw = hash_password(updates.password)
+            cur.execute("UPDATE users SET password = %s WHERE id = %s", (hashed_pw, user["user_id"]))
         conn.commit()
         return {"message": "User updated successfully"}
     except Exception as e:
