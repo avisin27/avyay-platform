@@ -1,11 +1,12 @@
 from fastapi import FastAPI, HTTPException, Depends, Form, File, UploadFile, Query, Body
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, EmailStr, constr
+from pydantic import BaseModel, EmailStr, constr, validator
 from typing import Optional, Literal
 from datetime import datetime
 from azure.storage.blob import BlobServiceClient
 import os
+import re
 
 from reflects.db import get_db_connection
 from reflects.auth import create_access_token, get_current_user
@@ -25,8 +26,20 @@ app.add_middleware(
 class UserCreate(BaseModel):
     name: constr(min_length=1, max_length=50)
     email: EmailStr
-    password: constr(min_length=6, max_length=100)
+    password: constr(min_length=8, max_length=100)  # enforce strong minimum
     role: Literal["student", "teacher"]
+
+    @validator("password")
+    def password_strength(cls, v):
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Password must include at least one uppercase letter.")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("Password must include at least one lowercase letter.")
+        if not re.search(r"\d", v):
+            raise ValueError("Password must include at least one number.")
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", v):
+            raise ValueError("Password must include at least one special character.")
+        return v
 
 class UserUpdate(BaseModel):
     name: Optional[constr(min_length=1, max_length=50)]
