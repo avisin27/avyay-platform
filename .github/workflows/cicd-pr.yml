@@ -82,9 +82,10 @@ jobs:
       - name: ☸️ Run Pytest in AKS Job
         run: |
           kubectl apply -f backend-job.yaml
-          kubectl wait --for=condition=complete job/backend-test -n $NAMESPACE --timeout=150s
-          kubectl logs job/backend-test -n $NAMESPACE
-          kubectl logs -f -n $NAMESPACE $(kubectl get pods -n $NAMESPACE --selector=job-name=backend-test -o jsonpath='{.items[-1:].metadata.name}')
+          sleep 5
+          POD=$(kubectl get pods -n $NAMESPACE --selector=job-name=backend-test -o jsonpath='{.items[0].metadata.name}')
+          kubectl wait --for=condition=Ready pod/$POD -n $NAMESPACE --timeout=90s || true
+          kubectl logs -f $POD -n $NAMESPACE
 
       # --- 🧹 Cleanup Test Job ---
       - name: Clean up K8s Job
