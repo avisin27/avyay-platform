@@ -5,7 +5,11 @@ metadata:
   namespace: reflectns
 spec:
   backoffLimit: 0
+  ttlSecondsAfterFinished: 600  # Auto-delete job 10 mins after finish
   template:
+    metadata:
+      labels:
+        app: backend-test
     spec:
       containers:
         - name: backend-test
