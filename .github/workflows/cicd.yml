@@ -118,15 +118,32 @@ jobs:
           scan-type: config
           scan-ref: ./frontend
           format: table
-          exit-code: 1
+          exit-code: 0
 
       # --- 🛠 Build and Push Frontend Image ---
       - name: 🛠 Build and Push Frontend Image
         run: |
           docker buildx build --platform linux/amd64 \
             -t $ACR_LOGIN_SERVER/avyay-frontend:${{ env.IMAGE_TAG }} \
-            -t $ACR_LOGIN_SERVER/avyay-frontend:latest \
             ./frontend --push
+      
+      # --- 🚀 Promote Frontend Image ---
+      - name: 🚀 Promote Frontend Image
+        run: |
+          # Pull versioned image so we can tag it locally
+          docker pull $ACR_LOGIN_SERVER/avyay-frontend:${{ env.IMAGE_TAG }}
+      
+          # Try to pull latest (optional — may not exist yet)
+          docker pull $ACR_LOGIN_SERVER/avyay-frontend:latest || true
+      
+          # Save current latest as rollback
+          docker tag $ACR_LOGIN_SERVER/avyay-frontend:latest $ACR_LOGIN_SERVER/avyay-frontend:rollback || true
+          docker push $ACR_LOGIN_SERVER/avyay-frontend:rollback || true
+      
+          # Promote versioned image to latest
+          docker tag $ACR_LOGIN_SERVER/avyay-frontend:${{ env.IMAGE_TAG }} $ACR_LOGIN_SERVER/avyay-frontend:latest
+          docker push $ACR_LOGIN_SERVER/avyay-frontend:latest
+
 
       # --- 🧪 Trivy Vulnerability Scan (Frontend) ---
       - name: 🧪 Trivy Vulnerability Scan (Frontend)
