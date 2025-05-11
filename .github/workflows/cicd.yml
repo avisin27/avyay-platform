@@ -6,11 +6,10 @@ on:
       - main
   workflow_dispatch:
 
-
 env:
   ACR_NAME: reflectacr
   ACR_LOGIN_SERVER: reflectacr.azurecr.io
-  IMAGE_TAG: pr-${{ github.sha }}
+  IMAGE_TAG: ${{ github.sha }}  # commit SHA for prod versioning
   NAMESPACE: reflectns
   CLUSTER_NAME: reflect-cluster
   RESOURCE_GROUP: reflect-rg
@@ -43,12 +42,11 @@ jobs:
           format: table
           exit-code: 1
 
-      # --- 🛠 Build Backend Image ---
-      - name: 🛠 Build Backend Image (PR Tag)
+      # --- 🛠 Build and Push Backend Image ---
+      - name: 🛠 Build and Push Backend Image
         run: |
           docker buildx build --platform linux/amd64 \
             -t $ACR_LOGIN_SERVER/avyay-backend:${{ env.IMAGE_TAG }} \
-            -t $ACR_LOGIN_SERVER/avyay-backend:test \
             ./backend --push
 
       # --- 🧪 Trivy Vulnerability Scan on Backend Image ---
@@ -60,9 +58,9 @@ jobs:
             --exit-code 1 \
             --ignore-unfixed \
             --format table \
-            $ACR_LOGIN_SERVER/avyay-backend:test
+            $ACR_LOGIN_SERVER/avyay-backend:${{ env.IMAGE_TAG }}
 
-      # --- ☸️ Set AKS Context Early ---
+      # --- ☸️ Set AKS Context ---
       - name: ☸️ Set AKS Context
         uses: azure/aks-set-context@v3
         with:
@@ -86,7 +84,7 @@ jobs:
         if: always()
         run: kubectl delete job backend-test -n $NAMESPACE || true
 
-      # --- 🚀 Promote Backend to latest + rollback ---
+      # --- 🚀 Promote Backend Image ---
       - name: 🚀 Promote Backend Image
         run: |
           docker pull $ACR_LOGIN_SERVER/avyay-backend:latest || true
@@ -94,9 +92,8 @@ jobs:
           docker tag $ACR_LOGIN_SERVER/avyay-backend:${{ env.IMAGE_TAG }} $ACR_LOGIN_SERVER/avyay-backend:latest
           docker push $ACR_LOGIN_SERVER/avyay-backend:rollback || true
           docker push $ACR_LOGIN_SERVER/avyay-backend:latest
-      
-      # AFTER promoting release-<sha> to latest
-      - name: 🗑 Delete Release Tag (Cleanup)
+
+      - name: 🗑 Delete Version Tag (Optional Cleanup)
         if: success()
         run: |
           az acr repository delete --name $ACR_NAME \
@@ -112,13 +109,13 @@ jobs:
           format: table
           exit-code: 1
 
-      # --- 🛠 Build Frontend Image ---
-      - name: 🛠 Build Frontend Image
+      # --- 🛠 Build and Push Frontend Image ---
+      - name: 🛠 Build and Push Frontend Image
         run: |
           docker buildx build --platform linux/amd64 \
             -t $ACR_LOGIN_SERVER/avyay-frontend:${{ env.IMAGE_TAG }} \
             -t $ACR_LOGIN_SERVER/avyay-frontend:latest \
-            ./frontend --load
+            ./frontend --push
 
       # --- 🧪 Trivy Vulnerability Scan (Frontend) ---
       - name: 🧪 Trivy Vulnerability Scan (Frontend)
@@ -129,9 +126,6 @@ jobs:
             --ignore-unfixed \
             --format table \
             $ACR_LOGIN_SERVER/avyay-frontend:latest
-
-      - name: 🚀 Push Frontend Image
-        run: docker push $ACR_LOGIN_SERVER/avyay-frontend:latest
 
       # --- 🔄 Rolling Update AKS Deployments ---
       - name: 🔄 Rolling Update AKS Deployments
