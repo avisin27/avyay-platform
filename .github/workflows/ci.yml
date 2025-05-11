@@ -21,7 +21,8 @@ jobs:
       - name: Run Backend Pytest
         run: |
           pip install -r backend/requirements.txt
-          pytest tests/
+          cd backend
+          pytest ../tests/
 
       - name: Log in to Azure
         uses: azure/login@v1
