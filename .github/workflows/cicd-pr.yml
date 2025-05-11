@@ -77,7 +77,7 @@ jobs:
       - name: Generate Backend Test Job YAML
         run: |
           sed "s|IMAGE_PLACEHOLDER|$ACR_LOGIN_SERVER/avyay-backend:${{ env.IMAGE_TAG }}|g" \
-            k8/backend-test-job.yaml > backend-job.yaml
+            k8/backend-test-job.yml > backend-job.yaml
 
       # --- 🧪 Apply Test Job on AKS ---
       - name: Run Pytest in AKS Job
