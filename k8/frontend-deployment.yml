@@ -16,5 +16,6 @@ spec:
       containers:
         - name: frontend
           image: reflectacr.azurecr.io/avyay-frontend:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 80
