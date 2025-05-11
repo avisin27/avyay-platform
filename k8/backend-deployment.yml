@@ -46,3 +46,6 @@ spec:
               value: DefaultEndpointsProtocol=https;AccountName=reflectstorage;AccountKey=h5PaAwcLOsY0in3OxS4XQwgBLOEsJANeMlLc0/JAERpij/IroYD/E3hkITIG81gHaPNHERR55YES+AStj7xtxw==;EndpointSuffix=core.windows.net
             - name: AZURE_STORAGE_CONTAINER_NAME
               value: uploads
+            - name: ENV
+              value: production
+
