@@ -12,7 +12,6 @@ spec:
         paths:
           - path: /api(/|$)(.*)
             pathType: ImplementationSpecific
-            pathType: Prefix
             backend:
               service:
                 name: backend-service
