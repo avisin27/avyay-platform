@@ -49,7 +49,7 @@ jobs:
           docker buildx build --platform linux/amd64 \
             -t $ACR_LOGIN_SERVER/avyay-backend:${{ env.IMAGE_TAG }} \
             -t $ACR_LOGIN_SERVER/avyay-backend:test \
-            ./backend --load
+            ./backend --push
 
       # --- 🧪 Trivy Vulnerability Scan on Backend Image ---
       - name: 🧪 Trivy Vulnerability Scan (Backend)
