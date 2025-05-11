@@ -5,12 +5,15 @@ from pydantic import BaseModel, EmailStr, constr, validator
 from typing import Optional, Literal
 from datetime import datetime
 from azure.storage.blob import BlobServiceClient
+from passlib.context import CryptContext
 import os
 import re
 
 from reflects.db import get_db_connection
 from reflects.auth import create_access_token, get_current_user
 from reflects.redis_client import hybrid_rate_limiter
+from reflects.auth import hash_password
+from reflects.auth import verify_password
 
 app = FastAPI(docs_url="/api/docs", openapi_url="/api/openapi.json")
 
@@ -70,6 +73,16 @@ def get_sas_url(blob_name: str):
     blob_client = blob_service_client.get_blob_client(container=AZURE_CONTAINER, blob=blob_name)
     return blob_client.url
 
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+
 # ----- Routes -----
 @app.get("/test-version")
 def test_version():
@@ -80,9 +93,10 @@ def create_user(user: UserCreate):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
+        hashed_pw = hash_password(user.password)
         cur.execute(
             "INSERT INTO users (name, email, password, role) VALUES (%s, %s, %s, %s)",
-            (user.name.strip(), user.email.lower(), user.password, user.role)
+            (user.name.strip(), user.email.lower(), hashed_pw, user.role)
         )
         conn.commit()
         return {"message": "User created successfully"}
@@ -100,7 +114,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
     try:
         cur.execute("SELECT id, password, role FROM users WHERE email = %s", (form_data.username,))
         user = cur.fetchone()
-        if not user or user[1] != form_data.password:
+        if not user not verify_password(form_data.password, user[1]):
             raise HTTPException(status_code=401, detail="Invalid credentials")
         token = create_access_token({"user_id": user[0], "role": user[2]})
         return {"access_token": token, "token_type": "bearer"}
