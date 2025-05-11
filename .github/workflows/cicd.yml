@@ -1,10 +1,11 @@
 name: CI/CD - Test, Scan, Deploy to AKS
 
 on:
-  pull_request:
+  push:
     branches:
       - main
   workflow_dispatch:
+
 
 env:
   ACR_NAME: reflectacr
