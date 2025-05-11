@@ -156,10 +156,10 @@ jobs:
             $ACR_LOGIN_SERVER/avyay-frontend:latest
 
       # --- 🔄 Rolling Update AKS Deployments ---
-      - name: 🔄 Rolling Update AKS Deployments
-        run: |
-          kubectl set image deployment/avyay-backend avyay-backend=$ACR_LOGIN_SERVER/avyay-backend:latest -n $NAMESPACE
-          kubectl set image deployment/avyay-frontend avyay-frontend=$ACR_LOGIN_SERVER/avyay-frontend:latest -n $NAMESPACE
+      #- name: 🔄 Rolling Update AKS Deployments
+      #  run: |
+      #    kubectl set image deployment/avyay-backend avyay-backend=$ACR_LOGIN_SERVER/avyay-backend:latest -n $NAMESPACE
+      #    kubectl set image deployment/avyay-frontend avyay-frontend=$ACR_LOGIN_SERVER/avyay-frontend:latest -n $NAMESPACE
 
       # --- 📦 Apply Static Manifests ---
       - name: 📦 Apply Static Manifests (Services & Ingress)
