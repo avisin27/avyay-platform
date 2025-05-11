@@ -1,0 +1,102 @@
+name: CI – PR Validation via ACR + AKS
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  ACR_NAME: reflectacr
+  ACR_LOGIN_SERVER: reflectacr.azurecr.io
+  IMAGE_TAG: pr-${{ github.sha }}
+  NAMESPACE: reflectns
+  CLUSTER_NAME: reflect-cluster
+  RESOURCE_GROUP: reflect-rg
+
+jobs:
+  test-pr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🛎 Checkout Code
+        uses: actions/checkout@v3
+
+      - name: 🔄 Rebase on main (optional safety)
+        run: |
+          git fetch origin main
+          git merge origin/main --no-edit || true
+
+      - name: 🔐 Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: 🔑 Log in to ACR
+        run: az acr login --name ${{ env.ACR_NAME }}
+
+      - name: ⚙️ Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      # --- 🧪 Trivy Config Scan (Dockerfile) ---
+      - name: Trivy Dockerfile Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: config
+          scan-ref: ./backend
+          format: table
+          exit-code: 1
+
+      # --- 🛠 Build + Push PR Image ---
+      - name: Build & Push Backend Image
+        run: |
+          docker buildx build --platform linux/amd64 \
+            -t $ACR_LOGIN_SERVER/avyay-backend:${{ env.IMAGE_TAG }} \
+            ./backend --push
+
+      # --- 🧪 Trivy Vulnerability Scan (Backend) ---
+      - name: Trivy Image Scan
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+          trivy image \
+            --severity CRITICAL \
+            --exit-code 1 \
+            --ignore-unfixed \
+            --format table \
+            $ACR_LOGIN_SERVER/avyay-backend:${{ env.IMAGE_TAG }}
+
+      # --- ☸️ Set AKS Context ---
+      - name: Set AKS Context
+        uses: azure/aks-set-context@v3
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          cluster-name: ${{ env.CLUSTER_NAME }}
+          resource-group: ${{ env.RESOURCE_GROUP }}
+
+      # --- 🧾 Generate K8s Test Job YAML ---
+      - name: Generate Backend Test Job YAML
+        run: |
+          sed "s|IMAGE_PLACEHOLDER|$ACR_LOGIN_SERVER/avyay-backend:${{ env.IMAGE_TAG }}|g" \
+            k8/backend-test-job.yml > backend-job.yaml
+
+      - name: ☸️ Run Pytest in AKS Job
+        run: |
+          kubectl apply -f backend-job.yaml
+          sleep 3
+          POD=$(kubectl get pods -n $NAMESPACE --selector=job-name=backend-test -o jsonpath='{.items[0].metadata.name}')
+          echo "Test pod name: $POD"
+          kubectl wait --for=condition=Ready pod/$POD -n $NAMESPACE --timeout=60s || true
+          kubectl logs -f $POD -n $NAMESPACE
+
+      # --- 🧹 Cleanup Test Job ---
+      - name: Clean up K8s Job
+        if: always()
+        run: kubectl delete job backend-test -n $NAMESPACE || true
+
+      # --- 🗑 Delete Test Image ---
+      - name: Delete PR Image from ACR
+        if: always()
+        run: |
+          az acr repository delete --name $ACR_NAME \
+            --image avyay-backend:${{ env.IMAGE_TAG }} \
+            --yes
