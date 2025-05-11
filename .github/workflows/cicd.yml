@@ -1,0 +1,160 @@
+name: CI/CD - Test, Scan, Deploy to AKS
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  ACR_NAME: reflectacr
+  ACR_LOGIN_SERVER: reflectacr.azurecr.io
+  IMAGE_TAG: pr-${{ github.sha }}
+  NAMESPACE: reflectns
+  CLUSTER_NAME: reflect-cluster
+  RESOURCE_GROUP: reflect-rg
+
+jobs:
+  ci-cd:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🛎 Checkout Code
+        uses: actions/checkout@v3
+
+      - name: 🔐 Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: 🔑 Log in to ACR
+        run: az acr login --name ${{ env.ACR_NAME }}
+
+      - name: ⚙️ Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      # --- 🔍 Trivy Config Scan on Backend ---
+      - name: 🧪 Trivy Config Scan (Backend Dockerfile)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: config
+          scan-ref: ./backend
+          format: table
+          exit-code: 1
+
+      # --- 🛠 Build Backend Image ---
+      - name: 🛠 Build Backend Image (PR Tag)
+        run: |
+          docker buildx build --platform linux/amd64 \
+            -t $ACR_LOGIN_SERVER/avyay-backend:${{ env.IMAGE_TAG }} \
+            -t $ACR_LOGIN_SERVER/avyay-backend:test \
+            ./backend --load
+
+      # --- 🧪 Trivy Vulnerability Scan on Backend Image ---
+      - name: 🧪 Trivy Vulnerability Scan (Backend)
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+          trivy image \
+            --severity CRITICAL \
+            --exit-code 1 \
+            --ignore-unfixed \
+            --format table \
+            $ACR_LOGIN_SERVER/avyay-backend:test
+
+      # --- ☸️ Set AKS Context Early ---
+      - name: ☸️ Set AKS Context
+        uses: azure/aks-set-context@v3
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          cluster-name: ${{ env.CLUSTER_NAME }}
+          resource-group: ${{ env.RESOURCE_GROUP }}
+
+      # --- 🧾 Generate Test Job YAML with PR Image Tag ---
+      - name: 🧾 Generate Test Job YAML
+        run: |
+          cat <<EOF > backend-test-job.yaml
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: backend-test
+            namespace: $NAMESPACE
+          spec:
+            backoffLimit: 0
+            template:
+              spec:
+                containers:
+                  - name: backend-test
+                    image: $ACR_LOGIN_SERVER/avyay-backend:${{ env.IMAGE_TAG }}
+                    envFrom:
+                      - secretRef:
+                          name: reflect-secrets
+                    command: ["/bin/sh", "-c"]
+                    args: ["pytest tests/ && curl --fail http://localhost:8000/test-version"]
+                restartPolicy: Never
+          EOF
+
+      - name: ☸️ Run Pytest in AKS Job
+        run: |
+          kubectl delete job backend-test -n $NAMESPACE || true
+          kubectl apply -f backend-test-job.yaml
+          kubectl wait --for=condition=complete job/backend-test -n $NAMESPACE --timeout=120s
+          kubectl logs job/backend-test -n $NAMESPACE
+
+      - name: 🧹 Clean up test job
+        if: always()
+        run: kubectl delete job backend-test -n $NAMESPACE || true
+
+      # --- 🚀 Promote Backend to latest + rollback ---
+      - name: 🚀 Promote Backend Image
+        run: |
+          docker pull $ACR_LOGIN_SERVER/avyay-backend:latest || true
+          docker tag $ACR_LOGIN_SERVER/avyay-backend:latest $ACR_LOGIN_SERVER/avyay-backend:rollback || true
+          docker tag $ACR_LOGIN_SERVER/avyay-backend:${{ env.IMAGE_TAG }} $ACR_LOGIN_SERVER/avyay-backend:latest
+          docker push $ACR_LOGIN_SERVER/avyay-backend:rollback || true
+          docker push $ACR_LOGIN_SERVER/avyay-backend:latest
+
+      # --- 🔍 Trivy Config Scan on Frontend ---
+      - name: 🧪 Trivy Config Scan (Frontend Dockerfile)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: config
+          scan-ref: ./frontend
+          format: table
+          exit-code: 1
+
+      # --- 🛠 Build Frontend Image ---
+      - name: 🛠 Build Frontend Image
+        run: |
+          docker buildx build --platform linux/amd64 \
+            -t $ACR_LOGIN_SERVER/avyay-frontend:${{ env.IMAGE_TAG }} \
+            -t $ACR_LOGIN_SERVER/avyay-frontend:latest \
+            ./frontend --load
+
+      # --- 🧪 Trivy Vulnerability Scan (Frontend) ---
+      - name: 🧪 Trivy Vulnerability Scan (Frontend)
+        run: |
+          trivy image \
+            --severity CRITICAL \
+            --exit-code 1 \
+            --ignore-unfixed \
+            --format table \
+            $ACR_LOGIN_SERVER/avyay-frontend:latest
+
+      - name: 🚀 Push Frontend Image
+        run: docker push $ACR_LOGIN_SERVER/avyay-frontend:latest
+
+      # --- 🔄 Rolling Update AKS Deployments ---
+      - name: 🔄 Rolling Update AKS Deployments
+        run: |
+          kubectl set image deployment/avyay-backend avyay-backend=$ACR_LOGIN_SERVER/avyay-backend:latest -n $NAMESPACE
+          kubectl set image deployment/avyay-frontend avyay-frontend=$ACR_LOGIN_SERVER/avyay-frontend:latest -n $NAMESPACE
+
+      # --- 📦 Apply Static Manifests ---
+      - name: 📦 Apply Static Manifests (Services & Ingress)
+        run: |
+          kubectl apply -f k8/backend-deployment.yml
+          kubectl apply -f k8/backend-service.yml
+          kubectl apply -f k8/frontend-deployment.yml
+          kubectl apply -f k8/frontend-service.yml
+          kubectl apply -f k8/backend-ingress.yaml -n $NAMESPACE
+          kubectl apply -f k8/frontend-ingress.yaml -n $NAMESPACE
