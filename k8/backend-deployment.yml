@@ -40,16 +40,20 @@ spec:
           #    value: avyaysecret
           #  - name: RATE_LIMIT_MODE
           #    value: fixed
-            - name: AZURE_SAS_TOKEN
-              value: sp=rwdl&st=2025-05-10T21:26:06Z&se=2025-05-11T05:26:06Z&sv=2024-11-04&sr=c&sig=%2Fh5yI6WDf3bXFu45qesoUV4voHFK1mJTiUJxONScgTY%3D
-            - name: AZURE_STORAGE_CONNECTION_STRING
-              value: DefaultEndpointsProtocol=https;AccountName=reflectstorage;AccountKey=h5PaAwcLOsY0in3OxS4XQwgBLOEsJANeMlLc0/JAERpij/IroYD/E3hkITIG81gHaPNHERR55YES+AStj7xtxw==;EndpointSuffix=core.windows.net
+          #  - name: AZURE_SAS_TOKEN
+          #    value: sp=rwdl&st=2025-05-10T21:26:06Z&se=2025-05-11T05:26:06Z&sv=2024-11-04&sr=c&sig=%2Fh5yI6WDf3bXFu45qesoUV4voHFK1mJTiUJxONScgTY%3D
+          #  - name: AZURE_STORAGE_CONNECTION_STRING
+          #    value: DefaultEndpointsProtocol=https;AccountName=reflectstorage;AccountKey=h5PaAwcLOsY0in3OxS4XQwgBLOEsJANeMlLc0/JAERpij/IroYD/E3hkITIG81gHaPNHERR55YES+AStj7xtxw==;EndpointSuffix=core.windows.net
           #  - name: AZURE_STORAGE_CONTAINER_NAME
           #    value: uploads
           #  - name: ENV
           #    value: production
           
           env:
+            - name: AZURE_SAS_TOKEN
+              value: sp=rwdl&st=2025-05-10T21:26:06Z&se=2025-05-11T05:26:06Z&sv=2024-11-04&sr=c&sig=%2Fh5yI6WDf3bXFu45qesoUV4voHFK1mJTiUJxONScgTY%3D
+            - name: AZURE_STORAGE_CONNECTION_STRING
+              value: DefaultEndpointsProtocol=https;AccountName=reflectstorage;AccountKey=h5PaAwcLOsY0in3OxS4XQwgBLOEsJANeMlLc0/JAERpij/IroYD/E3hkITIG81gHaPNHERR55YES+AStj7xtxw==;EndpointSuffix=core.windows.net
             - name: DB_HOST
               valueFrom:
                 secretKeyRef:
