@@ -8,7 +8,20 @@ services:
       - "8000:8000"
     env_file:
       - ./backend/.env
-
+    environment:
+      - DB_PORT=5432
+      - DB_NAME=reflectmain
+      - DB_USER=reflect
+      - DB_PASS=dyhcoC-0xodme-byfmum
+      - DB_HOST=reflectdb.postgres.database.azure.com
+      - JWT_SECRET=avyaysecret
+      - REDIS_HOST=reflectred.redis.cache.windows.net
+      - REDIS_PORT=6380
+      - REDIS_PASS=HinLSU2AFpvbQtSeFf2FLq1i7sJCc2UbzAzCaACs9B4=
+      - RATE_LIMIT_MODE=fixed
+      - AZURE_SAS_TOKEN=sp=rwdl&st=2025-05-10T21:26:06Z&se=2025-05-11T05:26:06Z&sv=2024-11-04&sr=c&sig=%2Fh5yI6WDf3bXFu45qesoUV4voHFK1mJTiUJxONScgTY%3D
+      - AZURE_STORAGE_CONNECTION_STRING=https://reflectstorage.blob.core.windows.net/uploads?sp=rwdl&st=2025-05-10T21:26:06Z&se=2025-05-11T05:26:06Z&sv=2024-11-04&sr=c&sig=%2Fh5yI6WDf3bXFu45qesoUV4voHFK1mJTiUJxONScgTY%3D
+      - AZURE_STORAGE_CONTAINER_NAME=uploads 
   frontend:
     build: ./frontend
     container_name: simple-frontend
