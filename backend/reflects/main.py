@@ -121,38 +121,41 @@ def update_user(updates: UserUpdate, user = Depends(get_current_user)):
 
 
 # --- File Uploads ---
-def upload_to_azure(file, object_name):
+def upload_to_azure(file, object_name: str):
     """
-    Upload a file to Azure Blob Storage using SAS Token
-    :param file: FastAPI UploadFile object.
-    :param object_name: Object name in Azure Blob Storage.
-    :return: URL of the uploaded file.
+    Uploads a file to Azure Blob Storage using a secure connection string
+    that may include a SAS token. Stores only the object name for reference.
     """
-    # Retrieve SAS token and container name from environment variables
-    sas_token = os.getenv("AZURE_SAS_TOKEN")
-    container_name = os.getenv("AZURE_STORAGE_CONTAINER_NAME", "uploads")  # Default to "uploads"
-    connection_string = os.getenv("AZURE_STORAGE_CONNECTION_STRING")  # Optional if you're using SAS
+    container_name = os.getenv("AZURE_STORAGE_CONTAINER_NAME", "uploads")
+    connection_string = os.getenv("AZURE_STORAGE_CONNECTION_STRING")  # should include SAS or key
 
     try:
-        # Create BlobServiceClient using SAS token and connection string
+        # Create BlobServiceClient
         blob_service_client = BlobServiceClient.from_connection_string(connection_string)
-
-        # Construct the full blob URL with SAS Token
-        blob_url = f"https://{blob_service_client.account_name}.blob.core.windows.net/{container_name}/{object_name}?{sas_token}"
-
-        # Get a reference to the container and blob client
         container_client = blob_service_client.get_container_client(container_name)
         blob_client = container_client.get_blob_client(object_name)
 
-        # Upload the file to Azure Blob Storage
+        # Upload file (overwrite if already exists)
         blob_client.upload_blob(file.file, overwrite=True)
 
-        return blob_url  # Return the URL of the uploaded file
+        # ✅ Do not return full URL with SAS — only store object_name in DB
+        return True
 
     except Exception as e:
         raise Exception(f"Error uploading to Azure Blob Storage: {str(e)}")
-
+        
 ENV = os.getenv("ENV", "local")  # set ENV=production on your EC2/s3 setup
+
+def get_sas_url(blob_name: str):
+    """
+    Generate the full blob URL using AZURE_STORAGE_CONNECTION_STRING (which includes SAS).
+    """
+    connection_string = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+    container_name = os.getenv("AZURE_STORAGE_CONTAINER_NAME", "uploads")
+    blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+    blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_name)
+    return blob_client.url
+
 
 @app.post("/submit-reflection")
 def submit_reflection(
@@ -164,17 +167,14 @@ def submit_reflection(
     if not hybrid_rate_limiter(user["user_id"], "reflection", 30):
         raise HTTPException(status_code=429, detail="Reflection rate limit reached.")
 
+    video_path = f"{user['user_id']}_{chapter_id}_{video_file.filename}"
+
     if ENV == "production":
-        # ✅ Upload to Azure Blob Storage
-        video_url = upload_to_azure(video_file, f"{user['user_id']}_{chapter_id}")
+        upload_to_azure(video_file, video_path)
     else:
-        # ✅ Save locally
         os.makedirs("uploads", exist_ok=True)
-        filename = f"{user['user_id']}_{chapter_id}_{video_file.filename}"
-        file_path = f"uploads/{filename}"
-        with open(file_path, "wb") as f:
+        with open(f"uploads/{video_path}", "wb") as f:
             f.write(video_file.file.read())
-        video_url = f"/uploads/{filename}"
 
     conn = get_db_connection()
     cur = conn.cursor()
@@ -185,7 +185,7 @@ def submit_reflection(
         """, (
             user["user_id"],
             chapter_id,
-            video_url,
+            video_path,
             text_summary.strip() if text_summary else None,
             datetime.utcnow()
         ))
@@ -199,6 +199,7 @@ def submit_reflection(
     finally:
         cur.close()
         conn.close()
+
 
 
 @app.get("/chapters")
@@ -229,7 +230,7 @@ def get_my_reflections(user = Depends(get_current_user)):
         reflections = [
             {
                 "chapter": row[1],
-                "video_url": row[2],
+                "video_url": get_sas_url(row[2]),  # row[2] is the blob name
                 "summary": row[3],
                 "submitted_at": row[4].isoformat()
             }
@@ -239,6 +240,7 @@ def get_my_reflections(user = Depends(get_current_user)):
     finally:
         cur.close()
         conn.close()
+        
 
 @app.get("/students/emails")
 def get_student_emails(user=Depends(get_current_user)):
