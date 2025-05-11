@@ -69,29 +69,10 @@ jobs:
           cluster-name: ${{ env.CLUSTER_NAME }}
           resource-group: ${{ env.RESOURCE_GROUP }}
 
-      # --- 🧾 Generate Test Job YAML with PR Image Tag ---
-      - name: 🧾 Generate Test Job YAML
+      - name: 🧾 Generate Final Job YAML
         run: |
-          cat <<EOF > backend-test-job.yaml
-          apiVersion: batch/v1
-          kind: Job
-          metadata:
-            name: backend-test
-            namespace: $NAMESPACE
-          spec:
-            backoffLimit: 0
-            template:
-              spec:
-                containers:
-                  - name: backend-test
-                    image: $ACR_LOGIN_SERVER/avyay-backend:${{ env.IMAGE_TAG }}
-                    envFrom:
-                      - secretRef:
-                          name: reflect-secrets
-                    command: ["/bin/sh", "-c"]
-                    args: ["pytest tests/ && curl --fail http://localhost:8000/test-version"]
-                restartPolicy: Never
-          EOF
+          sed "s|IMAGE_PLACEHOLDER|$ACR_LOGIN_SERVER/avyay-backend:${{ env.IMAGE_TAG }}|g" \
+            k8/backend-test-job-template.yaml > backend-test-job.yaml
 
       - name: ☸️ Run Pytest in AKS Job
         run: |
