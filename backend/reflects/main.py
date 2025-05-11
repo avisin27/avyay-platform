@@ -123,26 +123,20 @@ def update_user(updates: UserUpdate, user = Depends(get_current_user)):
 # --- File Uploads ---
 def upload_to_azure(file, object_name: str):
     """
-    Uploads a file to Azure Blob Storage using a secure connection string
-    that may include a SAS token. Stores only the object name for reference.
+    Uploads a file to Azure Blob Storage. Does not return a URL.
+    Only stores the object name.
     """
     container_name = os.getenv("AZURE_STORAGE_CONTAINER_NAME", "uploads")
-    connection_string = os.getenv("AZURE_STORAGE_CONNECTION_STRING")  # should include SAS or key
+    connection_string = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 
     try:
-        # Create BlobServiceClient
         blob_service_client = BlobServiceClient.from_connection_string(connection_string)
         container_client = blob_service_client.get_container_client(container_name)
         blob_client = container_client.get_blob_client(object_name)
-
-        # Upload file (overwrite if already exists)
         blob_client.upload_blob(file.file, overwrite=True)
-
-        # ✅ Do not return full URL with SAS — only store object_name in DB
-        return True
-
     except Exception as e:
         raise Exception(f"Error uploading to Azure Blob Storage: {str(e)}")
+
         
 ENV = os.getenv("ENV", "local")  # set ENV=production on your EC2/s3 setup
 
@@ -168,6 +162,7 @@ def submit_reflection(
         raise HTTPException(status_code=429, detail="Reflection rate limit reached.")
 
     video_path = f"{user['user_id']}_{chapter_id}_{video_file.filename}"
+    
 
     if ENV == "production":
         upload_to_azure(video_file, video_path)
@@ -295,7 +290,7 @@ def get_all_reflections(
                 "id": r[0],
                 "email": r[1],
                 "chapter_id": r[2],
-                "video_url": r[3],
+                "video_url": get_sas_url(r[3]),
                 "text_summary": r[4],
                 "submitted_at": r[5].isoformat(),
                 "status": r[6],
@@ -388,7 +383,7 @@ def get_teacher_feedback(
                 "feedback_id": r[0],
                 "student_email": r[1],
                 "chapter_id": r[2],
-                "video_url": r[3],
+                "video_url": get_sas_url(r[3]),
                 "status": r[4],
                 "comment": r[5],
                 "updated_at": r[6].isoformat() if r[6] else None
