@@ -12,8 +12,8 @@ RUN adduser --disabled-password --gecos "" appuser
 # Set work directory
 WORKDIR /app
 
-# Install system dependencies (only what’s necessary)
-RUN apt-get update && apt-get install -y \
+# Install system dependencies (minimal + Trivy clean)
+RUN apt-get update && apt-get install --no-install-recommends -y \
     curl \
     build-essential \
     && apt-get clean \
@@ -23,17 +23,17 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project
+# Copy project code
 COPY . .
 
-# Change to non-root user
+# Switch to non-root user
 USER appuser
 
-# Expose port for FastAPI
+# Expose port
 EXPOSE 8000
 
 # Add a simple healthcheck
 HEALTHCHECK --interval=30s --timeout=3s CMD curl --fail http://localhost:8000/health || exit 1
 
-# Run with Uvicorn
+# Run the FastAPI app with Uvicorn
 CMD ["uvicorn", "reflects.main:app", "--host", "0.0.0.0", "--port", "8000"]
