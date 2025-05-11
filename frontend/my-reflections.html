@@ -25,46 +25,42 @@
       window.location.href = "/";
     }
 
-    async function fetchReflections() {
-    const res = await fetch(`${API_BASE}/my-reflections`, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-
-      if (!res.ok) {
-        alert("Failed to load reflections");
-        return;
-      }
-
-      const data = await res.json();
-      const list = document.getElementById("reflections-list");
-
-      if (data.length === 0) {
-        list.innerHTML = `<li class="text-gray-500 text-center">No reflections yet.</li>`;
-      } else {
-        list.innerHTML = "";
-        data.forEach((ref, i) => {
-          const item = document.createElement("li");
-          item.className = "p-4 border rounded-lg text-left bg-gray-50";
-          item.innerHTML = `
-            <h3 class="font-semibold text-lg">${ref.chapter}</h3>
-            <p class="text-sm text-gray-500 mb-1">${new Date(ref.submitted_at).toLocaleString()}</p>
-            <video controls class="w-full mb-2">
-              <source src="${API_BASE}${ref.video_url}" type="video/mp4">
-              Your browser does not support video playback.
-            </video>
-            <p class="text-gray-700">${ref.summary || "No summary provided."}</p>
-          `;
-
-
-          list.appendChild(item);
-        });
-      }
+async function fetchReflections() {
+  const res = await fetch(`${API_BASE}/my-reflections`, {
+    headers: {
+      "Authorization": `Bearer ${token}`
     }
+  });
 
-    
+  if (!res.ok) {
+    alert("Failed to load reflections");
+    return;
+  }
 
+  const data = await res.json();
+  const list = document.getElementById("reflections-list");
+
+  if (data.length === 0) {
+    list.innerHTML = `<li class="text-gray-500 text-center">No reflections yet.</li>`;
+  } else {
+    list.innerHTML = "";
+    data.forEach((ref) => {
+      const videoSrc = ref.video_url.startsWith("http") ? ref.video_url : `${API_BASE}${ref.video_url}`;
+      const item = document.createElement("li");
+      item.className = "p-4 border rounded-lg text-left bg-gray-50";
+      item.innerHTML = `
+        <h3 class="font-semibold text-lg">${ref.chapter}</h3>
+        <p class="text-sm text-gray-500 mb-1">${new Date(ref.submitted_at).toLocaleString()}</p>
+        <video controls class="w-full mb-2">
+          <source src="${videoSrc}" type="video/mp4">
+          Your browser does not support video playback.
+        </video>
+        <p class="text-gray-700">${ref.summary || "No summary provided."}</p>
+      `;
+      list.appendChild(item);
+    });
+  }
+}
     fetchReflections();
   </script>
 </body>
