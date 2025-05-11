@@ -1,0 +1,18 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: backend-test
+  namespace: reflectns
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      containers:
+        - name: backend-test
+          image: IMAGE_PLACEHOLDER
+          envFrom:
+            - secretRef:
+                name: reflect-secrets
+          command: ["/bin/sh", "-c"]
+          args: ["pytest tests/ && curl --fail http://localhost:8000/test-version"]
+      restartPolicy: Never
