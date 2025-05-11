@@ -33,7 +33,7 @@ spec:
             - name: REDIS_HOST
               value: reflectred.redis.cache.windows.net
             - name: REDIS_PASS
-              value: HinLSU2AFpvbQtSeFf2FLq1i7sJCc2UbzAzCaACs9B4
+              value: HinLSU2AFpvbQtSeFf2FLq1i7sJCc2UbzAzCaACs9B4=
             - name: REDIS_PORT
               value: "6380"
             - name: JWT_SECRET
