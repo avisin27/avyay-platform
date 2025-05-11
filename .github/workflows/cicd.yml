@@ -87,11 +87,20 @@ jobs:
       # --- 🚀 Promote Backend Image ---
       - name: 🚀 Promote Backend Image
         run: |
+          # Pull the just-built image by SHA to make it available locally
+          docker pull $ACR_LOGIN_SERVER/avyay-backend:${{ env.IMAGE_TAG }}
+      
+          # Try to pull latest to preserve as rollback (optional on first deploy)
           docker pull $ACR_LOGIN_SERVER/avyay-backend:latest || true
+      
+          # Tag current latest as rollback
           docker tag $ACR_LOGIN_SERVER/avyay-backend:latest $ACR_LOGIN_SERVER/avyay-backend:rollback || true
-          docker tag $ACR_LOGIN_SERVER/avyay-backend:${{ env.IMAGE_TAG }} $ACR_LOGIN_SERVER/avyay-backend:latest
           docker push $ACR_LOGIN_SERVER/avyay-backend:rollback || true
+      
+          # Promote SHA version to latest
+          docker tag $ACR_LOGIN_SERVER/avyay-backend:${{ env.IMAGE_TAG }} $ACR_LOGIN_SERVER/avyay-backend:latest
           docker push $ACR_LOGIN_SERVER/avyay-backend:latest
+
 
       - name: 🗑 Delete Version Tag (Optional Cleanup)
         if: success()
