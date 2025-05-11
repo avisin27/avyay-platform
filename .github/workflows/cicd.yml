@@ -72,12 +72,12 @@ jobs:
       - name: 🧾 Generate Final Job YAML
         run: |
           sed "s|IMAGE_PLACEHOLDER|$ACR_LOGIN_SERVER/avyay-backend:${{ env.IMAGE_TAG }}|g" \
-            k8/backend-test-job-template.yaml > backend-test-job.yaml
+            k8/backend-test-job.yml > backend-job.yaml
 
       - name: ☸️ Run Pytest in AKS Job
         run: |
           kubectl delete job backend-test -n $NAMESPACE || true
-          kubectl apply -f backend-test-job.yaml
+          kubectl apply -f backend-job.yaml
           kubectl wait --for=condition=complete job/backend-test -n $NAMESPACE --timeout=120s
           kubectl logs job/backend-test -n $NAMESPACE
 
