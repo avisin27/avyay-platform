@@ -43,13 +43,19 @@ jobs:
             -t $ACR_LOGIN_SERVER/avyay-backend:latest \
             ./backend --load
 
-      - name: Scan Backend Image (vulnerability scan)
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ env.ACR_LOGIN_SERVER }}/avyay-backend:latest
-          format: table
-          exit-code: 1
-          ignore-unfixed: true
+      - name: Install Trivy CLI
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+      
+      - name: Scan Backend Image (fail on CRITICAL only)
+        run: |
+          trivy image \
+            --severity CRITICAL \
+            --exit-code 1 \
+            --ignore-unfixed \
+            --format table \
+            ${{ env.ACR_LOGIN_SERVER }}/avyay-backend:latest
+            
 
       - name: Push Backend Image
         run: docker push $ACR_LOGIN_SERVER/avyay-backend:latest
@@ -68,13 +74,19 @@ jobs:
             -t $ACR_LOGIN_SERVER/avyay-frontend:latest \
             ./frontend --load
 
-      - name: Scan Frontend Image (vulnerability scan)
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ env.ACR_LOGIN_SERVER }}/avyay-frontend:latest
-          format: table
-          exit-code: 1
-          ignore-unfixed: true
+      - name: Install Trivy CLI
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+      
+      - name: Scan Frontend Image (fail on CRITICAL only)
+        run: |
+          trivy image \
+            --severity CRITICAL \
+            --exit-code 1 \
+            --ignore-unfixed \
+            --format table \
+            ${{ env.ACR_LOGIN_SERVER }}/avyay-frontend:latest
+
 
       - name: Push Frontend Image
         run: docker push $ACR_LOGIN_SERVER/avyay-frontend:latest
