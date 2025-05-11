@@ -18,5 +18,5 @@ spec:
             - secretRef:
                 name: reflect-secrets
           command: ["/bin/sh", "-c"]
-          args: ["pytest --cache-clear --disable-warnings tests/ && curl --fail http://localhost:8000/test-version"]
+          args: ["/bin/sh", "-c", "cd /app && PYTHONPATH=. pytest --cache-clear --disable-warnings tests/ && curl --fail http://localhost:8000/test-version"]
       restartPolicy: Never
