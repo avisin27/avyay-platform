@@ -94,6 +94,14 @@ jobs:
           docker tag $ACR_LOGIN_SERVER/avyay-backend:${{ env.IMAGE_TAG }} $ACR_LOGIN_SERVER/avyay-backend:latest
           docker push $ACR_LOGIN_SERVER/avyay-backend:rollback || true
           docker push $ACR_LOGIN_SERVER/avyay-backend:latest
+      
+      # AFTER promoting release-<sha> to latest
+      - name: 🗑 Delete Release Tag (Cleanup)
+        if: success()
+        run: |
+          az acr repository delete --name $ACR_NAME \
+            --image avyay-backend:${{ env.IMAGE_TAG }} \
+            --yes
 
       # --- 🔍 Trivy Config Scan on Frontend ---
       - name: 🧪 Trivy Config Scan (Frontend Dockerfile)
