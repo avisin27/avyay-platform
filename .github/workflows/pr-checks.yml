@@ -1,0 +1,38 @@
+name: PR Sanity Checks
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  pr-checks:
+    runs-on: ubuntu-latest
+
+    env:
+      ACR_NAME: reflectacr
+      ACR_LOGIN_SERVER: reflectacr.azurecr.io
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      # 🧹 Lint (Backend)
+      - name: Run flake8 (Python Lint)
+        run: |
+          pip install flake8
+          flake8 backend --max-line-length=100
+
+      # ✅ Run Tests
+      - name: Run Pytest
+        run: |
+          pip install -r backend/requirements.txt
+          pytest backend
+
+      # 🕵️ Secret Scanning
+      - name: Scan for Secrets
+        uses: gitleaks/gitleaks-action@v2
