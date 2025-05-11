@@ -170,3 +170,10 @@ jobs:
           kubectl apply -f k8/frontend-service.yml
           kubectl apply -f k8/backend-ingress.yaml -n $NAMESPACE
           kubectl apply -f k8/frontend-ingress.yaml -n $NAMESPACE
+
+          kubectl rollout restart deployment/backend-deployment -n $NAMESPACE
+          kubectl rollout status deployment/backend-deployment -n $NAMESPACE
+
+          kubectl rollout restart deployment/frontend-deployment -n $NAMESPACE
+          kubectl rollout status deployment/frontend-deployment -n $NAMESPACE        
+
