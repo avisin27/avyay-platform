@@ -13,10 +13,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi import Query
 from fastapi import Body
 
-app = FastAPI(
-    docs_url="/api/docs",
-    openapi_url="/api/openapi.json"
-)
+app = FastAPI()
+
+@app.get("/test-version")
+def test_version():
+    return {"version": "api-docs-fix"}
 
 # Middleware for CORS
 app.add_middleware(
