@@ -84,6 +84,7 @@ jobs:
           kubectl apply -f backend-job.yaml
           kubectl wait --for=condition=complete job/backend-test -n $NAMESPACE --timeout=150s
           kubectl logs job/backend-test -n $NAMESPACE
+          kubectl logs -f -n $NAMESPACE $(kubectl get pods -n $NAMESPACE --selector=job-name=backend-test -o jsonpath='{.items[-1:].metadata.name}')
 
       # --- 🧹 Cleanup Test Job ---
       - name: Clean up K8s Job
