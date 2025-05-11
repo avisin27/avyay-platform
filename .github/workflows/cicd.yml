@@ -144,7 +144,13 @@ jobs:
           docker tag $ACR_LOGIN_SERVER/avyay-frontend:${{ env.IMAGE_TAG }} $ACR_LOGIN_SERVER/avyay-frontend:latest
           docker push $ACR_LOGIN_SERVER/avyay-frontend:latest
 
-
+      - name: 🗑 Delete Version Tag (Optional Cleanup)
+        if: success()
+        run: |
+          az acr repository delete --name $ACR_NAME \
+            --image avyay-frontend:${{ env.IMAGE_TAG }} \
+            --yes
+            
       # --- 🧪 Trivy Vulnerability Scan (Frontend) ---
       - name: 🧪 Trivy Vulnerability Scan (Frontend)
         run: |
