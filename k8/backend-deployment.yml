@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: reflectacr.azurecr.io/avyay-backend:latest
+          image: reflectacr.azurecr.io/avyay-backend:latest1
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
