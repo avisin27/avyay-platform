@@ -19,33 +19,98 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
+          #env:
+          #  - name: DB_HOST
+          #    value: reflectdb.postgres.database.azure.com
+          #  - name: DB_PORT
+          #    value: "5432"
+          #  - name: DB_NAME
+          #    value: reflectmain
+          #  - name: DB_USER
+          #    value: reflect
+          #  - name: DB_PASS
+          #    value: dyhcoC-0xodme-byfmum
+          #  - name: REDIS_HOST
+          #    value: reflectred.redis.cache.windows.net
+          #  - name: REDIS_PASS
+          #    value: HinLSU2AFpvbQtSeFf2FLq1i7sJCc2UbzAzCaACs9B4=
+          #  - name: REDIS_PORT
+          #    value: "6380"
+          #  - name: JWT_SECRET
+          #    value: avyaysecret
+          #  - name: RATE_LIMIT_MODE
+          #    value: fixed
+          #  - name: AZURE_SAS_TOKEN
+          #    value: sp=rwdl&st=2025-05-10T21:26:06Z&se=2025-05-11T05:26:06Z&sv=2024-11-04&sr=c&sig=%2Fh5yI6WDf3bXFu45qesoUV4voHFK1mJTiUJxONScgTY%3D
+          #  - name: AZURE_STORAGE_CONNECTION_STRING
+          #    value: DefaultEndpointsProtocol=https;AccountName=reflectstorage;AccountKey=h5PaAwcLOsY0in3OxS4XQwgBLOEsJANeMlLc0/JAERpij/IroYD/E3hkITIG81gHaPNHERR55YES+AStj7xtxw==;EndpointSuffix=core.windows.net
+          #  - name: AZURE_STORAGE_CONTAINER_NAME
+          #    value: uploads
+          #  - name: ENV
+          #    value: production
+          
           env:
             - name: DB_HOST
-              value: reflectdb.postgres.database.azure.com
+              valueFrom:
+                secretKeyRef:
+                  name: reflect-secrets
+                  key: DB_HOST
             - name: DB_PORT
-              value: "5432"
+              valueFrom:
+                secretKeyRef:
+                  name: reflect-secrets
+                  key: DB_PORT
             - name: DB_NAME
-              value: reflectmain
+              valueFrom:
+                secretKeyRef:
+                  name: reflect-secrets
+                  key: DB_NAME
             - name: DB_USER
-              value: reflect
+              valueFrom:
+                secretKeyRef:
+                  name: reflect-secrets
+                  key: DB_USER
             - name: DB_PASS
-              value: dyhcoC-0xodme-byfmum
+              valueFrom:
+                secretKeyRef:
+                  name: reflect-secrets
+                  key: DB_PASS
             - name: REDIS_HOST
-              value: reflectred.redis.cache.windows.net
+              valueFrom:
+                secretKeyRef:
+                  name: reflect-secrets
+                  key: REDIS_HOST
             - name: REDIS_PASS
-              value: HinLSU2AFpvbQtSeFf2FLq1i7sJCc2UbzAzCaACs9B4=
+              valueFrom:
+                secretKeyRef:
+                  name: reflect-secrets
+                  key: REDIS_PASS
             - name: REDIS_PORT
-              value: "6380"
+              valueFrom:
+                secretKeyRef:
+                  name: reflect-secrets
+                  key: REDIS_PORT
             - name: JWT_SECRET
-              value: avyaysecret
+              valueFrom:
+                secretKeyRef:
+                  name: reflect-secrets
+                  key: JWT_SECRET
             - name: RATE_LIMIT_MODE
               value: fixed
             - name: AZURE_SAS_TOKEN
-              value: sp=rwdl&st=2025-05-10T21:26:06Z&se=2025-05-11T05:26:06Z&sv=2024-11-04&sr=c&sig=%2Fh5yI6WDf3bXFu45qesoUV4voHFK1mJTiUJxONScgTY%3D
+              valueFrom:
+                secretKeyRef:
+                  name: reflect-secrets
+                  key: AZURE_SAS_TOKEN
             - name: AZURE_STORAGE_CONNECTION_STRING
-              value: DefaultEndpointsProtocol=https;AccountName=reflectstorage;AccountKey=h5PaAwcLOsY0in3OxS4XQwgBLOEsJANeMlLc0/JAERpij/IroYD/E3hkITIG81gHaPNHERR55YES+AStj7xtxw==;EndpointSuffix=core.windows.net
+              valueFrom:
+                secretKeyRef:
+                  name: reflect-secrets
+                  key: AZURE_STORAGE_CONNECTION_STRING
             - name: AZURE_STORAGE_CONTAINER_NAME
-              value: uploads
+              valueFrom:
+                secretKeyRef:
+                  name: reflect-secrets
+                  key: AZURE_STORAGE_CONTAINER_NAME
             - name: ENV
               value: production
-
