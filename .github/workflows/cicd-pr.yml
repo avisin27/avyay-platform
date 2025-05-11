@@ -81,7 +81,7 @@ jobs:
 
       - name: ☸️ Run Pytest in AKS Job
         run: |
-          kubectl apply -f backend-test-job.yaml
+          kubectl apply -f backend-job.yaml
           kubectl wait --for=condition=complete job/backend-test -n $NAMESPACE --timeout=150s
           kubectl logs job/backend-test -n $NAMESPACE
 
