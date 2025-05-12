@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="config.js"></script>
   <title>My Students</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="config.js"></script> <!-- Make sure config.js sets a global API_BASE -->
 </head>
 <body class="bg-gray-100 min-h-screen p-6">
 
@@ -37,12 +37,11 @@
     const token = localStorage.getItem("token");
     if (!token) window.location.href = "login.html";
 
-    const API = `${API_BASE}`;
+    const API = typeof API_BASE !== 'undefined' ? API_BASE : 'http://localhost:8000';
 
     const studentList = document.getElementById("student-list");
     const form = document.getElementById("add-student-form");
 
-    // Add Student
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
 
@@ -57,59 +56,88 @@
         return alert("Password must include uppercase, lowercase, number, special character and be 8+ characters.");
       }
 
-      const res = await fetch(`${API}/create-user`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({ name, email, password, role: "student" })
-      });
+      try {
+        const res = await fetch(`${API}/create-user`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({ name, email, password, role: "student" })
+        });
 
-      const data = await res.json();
-      if (res.ok) {
-        alert("Student added!");
-        form.reset();
-        fetchStudents();
-      } else {
-        alert(data.detail || "Failed to add student.");
+        const data = await res.json();
+        if (res.ok) {
+          alert("Student added!");
+          form.reset();
+          fetchStudents();
+        } else {
+          alert(data.detail || "Failed to add student.");
+        }
+      } catch (err) {
+        alert("Network error.");
+        console.error(err);
       }
     });
 
     async function fetchStudents() {
-      const res = await fetch(`${API}/students/emails`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
+      studentList.innerHTML = "<p class='text-gray-500'>Loading...</p>";
+      try {
+        const res = await fetch(`${API}/students/emails`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
 
-      const emails = await res.json();
-      studentList.innerHTML = "";
+        if (!res.ok) throw new Error("Failed to fetch students");
 
-      emails.forEach(email => {
-        const li = document.createElement("li");
-        li.className = "bg-gray-50 p-3 rounded shadow flex justify-between items-center";
-        li.innerHTML = `
-          <div>
-            <p class="text-gray-700 font-medium">${email}</p>
-          </div>
-          <div class="space-x-2">
-            <button onclick="editStudent('${email}')" class="text-yellow-600 hover:underline">Edit</button>
-            <button onclick="deleteStudent('${email}')" class="text-red-600 hover:underline">Delete</button>
-          </div>
-        `;
-        studentList.appendChild(li);
-      });
+        const emails = await res.json();
+        studentList.innerHTML = "";
+
+        emails.forEach(email => {
+          const li = document.createElement("li");
+          li.className = "bg-gray-50 p-3 rounded shadow flex justify-between items-center";
+          li.innerHTML = `
+            <div>
+              <p class="text-gray-700 font-medium">${email}</p>
+            </div>
+            <div class="space-x-2">
+              <button onclick="editStudent('${email}')" class="text-yellow-600 hover:underline">Edit</button>
+              <button onclick="deleteStudent('${email}')" class="text-red-600 hover:underline">Delete</button>
+            </div>
+          `;
+          studentList.appendChild(li);
+        });
+
+      } catch (err) {
+        console.error(err);
+        studentList.innerHTML = "<p class='text-red-500'>Failed to load students.</p>";
+      }
     }
 
-    // Placeholder functions for editing & deleting
     function editStudent(email) {
       alert("Edit functionality not implemented yet for: " + email);
-      // Here you could show a form pre-filled with name/email and allow editing
     }
 
     async function deleteStudent(email) {
       if (!confirm(`Delete student ${email}?`)) return;
-      alert("Delete functionality not implemented yet for: " + email);
-      // Implement an endpoint `/delete-user?email=` and call it here
+
+      try {
+        const res = await fetch(`${API}/delete-user?email=${encodeURIComponent(email)}`, {
+          method: "DELETE",
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          alert("Student deleted.");
+          fetchStudents();
+        } else {
+          alert(data.detail || "Failed to delete student.");
+        }
+      } catch (err) {
+        alert("Network error.");
+        console.error(err);
+      }
     }
 
     fetchStudents();
