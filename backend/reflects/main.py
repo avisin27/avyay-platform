@@ -507,7 +507,12 @@ def get_student_emails(user=Depends(get_current_user)):
         conn.close()
 
 @app.get("/all-reflections")
-def get_all_reflections(subject: Optional[str] = Query(None), email: Optional[str] = Query(None), user=Depends(get_current_user)):
+def get_all_reflections(
+    email: Optional[str] = Query(None),
+    subject_id: Optional[int] = Query(None),
+    chapter_id: Optional[int] = Query(None),
+    user=Depends(get_current_user)
+):
     if user["role"] != "teacher":
         raise HTTPException(status_code=403, detail="Access denied")
 
@@ -518,15 +523,34 @@ def get_all_reflections(subject: Optional[str] = Query(None), email: Optional[st
         JOIN users u ON r.user_id = u.id
         LEFT JOIN feedback f ON r.id = f.reflection_id
         JOIN chapters c ON r.chapter_id = c.id
-        WHERE r.obsolete = FALSE AND c.obsolete = FALSE AND f.obsolete = FALSE
+        WHERE r.obsolete = FALSE AND c.obsolete = FALSE AND (f.obsolete = FALSE OR f.obsolete IS NULL)
     """
     params = []
-    if subject:
-        query += " AND r.chapter_id::text = %s"
-        params.append(subject)
+
     if email:
         query += " AND u.email = %s"
         params.append(email)
+
+    if chapter_id:
+        query += " AND r.chapter_id = %s"
+        params.append(chapter_id)
+
+    elif subject_id:
+        # Get chapter IDs for this subject
+        conn = get_db_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute("SELECT id FROM chapters WHERE subject_id = %s AND obsolete = FALSE", (subject_id,))
+            chapter_ids = [row[0] for row in cur.fetchall()]
+        finally:
+            cur.close()
+            conn.close()
+
+        if not chapter_ids:
+            return []  # No chapters = no reflections
+
+        query += " AND r.chapter_id = ANY(%s)"
+        params.append(chapter_ids)
 
     query += " ORDER BY r.submitted_at DESC"
 
@@ -535,13 +559,19 @@ def get_all_reflections(subject: Optional[str] = Query(None), email: Optional[st
     try:
         cur.execute(query, tuple(params))
         return [{
-            "id": r[0], "email": r[1], "chapter_id": r[2], "video_url": get_sas_url(r[3]),
-            "text_summary": r[4], "submitted_at": r[5].isoformat(),
-            "status": r[6], "comment": r[7],
+            "id": r[0],
+            "email": r[1],
+            "chapter_id": r[2],
+            "video_url": get_sas_url(r[3]),
+            "text_summary": r[4],
+            "submitted_at": r[5].isoformat(),
+            "status": r[6],
+            "comment": r[7],
         } for r in cur.fetchall()]
     finally:
         cur.close()
         conn.close()
+
 
 @app.post("/teacher/feedback")
 def submit_feedback(data: FeedbackCreate, user=Depends(get_current_user)):
