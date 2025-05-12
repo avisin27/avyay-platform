@@ -153,27 +153,31 @@
       else alert("Failed to delete subject");
     }
 
-    async function addChapter(subjectId) {
-      const input = document.getElementById(`new-chapter-${subjectId}`);
-      const title = input.value.trim();
-      if (!title) return alert("Enter a chapter title");
+async function addChapter(subjectId) {
+  const input = document.getElementById(`new-chapter-${subjectId}`);
+  const title = input.value.trim();
+  if (!title) return alert("Enter a chapter title");
 
-const res = await fetch(`${API_BASE}/chapters`, {
-  method: "POST",
-  headers: {
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({ title, subject_id: subjectId })
-});
+  const res = await fetch(`${API_BASE}/subjects/${subjectId}/chapters`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ title })
+  });
 
-      if (res.ok) {
-        input.value = "";
-        fetchChapters(subjectId);
-      } else {
-        alert("Failed to add chapter");
-      }
-    }
+  const result = await res.json();
+
+  if (res.ok) {
+    input.value = "";
+    fetchChapters(subjectId);
+  } else {
+    console.error("Chapter creation failed:", result);
+    alert(result.detail || "Failed to add chapter");
+  }
+}
+
 
     async function fetchChapters(subjectId) {
       const res = await fetch(`${API_BASE}/subjects/${subjectId}/chapters`, {
