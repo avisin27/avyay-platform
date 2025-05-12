@@ -233,7 +233,7 @@ def get_chapters():
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute("SELECT id, name FROM chapters ORDER BY id")
+        cur.execute("SELECT id, name FROM chapters WHERE obsolete = FALSE ORDER BY id")
         return [{"id": row[0], "name": row[1]} for row in cur.fetchall()]
     finally:
         cur.close()
