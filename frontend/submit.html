@@ -88,37 +88,50 @@
     loadChapters(subjectSelect.value);
   });
 
-  document.getElementById("submit-btn").addEventListener("click", async (e) => {
-    e.preventDefault();
-    const formData = new FormData();
-    formData.append("chapter_id", chapterSelect.value);
-    formData.append("video_file", document.getElementById("video-file").files[0]);
-    formData.append("text_summary", document.getElementById("summary").value);
+document.getElementById("submit-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-    const res = await fetch(`${API_BASE}/submit-reflection`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData
-    });
+  const file = document.getElementById("video-file").files[0];
+  if (!file) return alert("Please select a video file.");
 
-    const text = await res.text();
-    try {
-      const data = JSON.parse(text);
-      if (res.ok) {
-        alert("Reflection submitted successfully!");
-        document.getElementById("submit-form").reset();
-      } else if (res.status === 400 && data.detail.includes("already submitted")) {
-        alert("You’ve already submitted for this chapter.");
-      } else if (res.status === 429) {
-        alert("You've reached the reflection limit for today.");
-      } else {
-        alert(data.detail || "Submission failed.");
-      }
-    } catch (err) {
-      console.error("Unexpected response:", text);
-      alert("Unexpected error. Please try again.");
-    }
+  const maxSizeMB = 1;
+  if (file.size > maxSizeMB * 1024 * 1024) {
+    alert(`File size is too large. Maximum allowed size is ${maxSizeMB}MB.`);
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("chapter_id", chapterSelect.value);
+  formData.append("video_file", file);
+  formData.append("text_summary", document.getElementById("summary").value);
+
+  const res = await fetch(`${API_BASE}/submit-reflection`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    body: formData
   });
+
+  const text = await res.text();
+  try {
+    const data = JSON.parse(text);
+    if (res.ok) {
+      alert("Reflection submitted successfully!");
+      document.getElementById("submit-form").reset();
+    } else if (res.status === 400 && data.detail.includes("already submitted")) {
+      alert("You’ve already submitted for this chapter.");
+    } else if (res.status === 429) {
+      alert("You've reached the reflection limit for today.");
+    } else {
+      alert(data.detail || "Submission failed.");
+    }
+  } catch (err) {
+    console.error("Unexpected response:", text);
+    alert("Unexpected error. Please try again.");
+  }
+});
+
 
   loadSubjects();
 </script>
