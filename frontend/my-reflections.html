@@ -96,10 +96,10 @@
 item.innerHTML = `
   <div class="bg-white rounded-xl shadow hover:shadow-lg transition overflow-hidden flex flex-col h-full">
     ${ref.video_url ? `
-      <video class="w-full h-40 object-cover" muted>
-        <source src="${videoSrc}" type="video/mp4">
-        Your browser does not support video playback.
-      </video>
+    <video class="w-full h-40 object-cover" controls muted preload="metadata">
+      <source src="${videoSrc}" type="video/mp4">
+      Your browser does not support video playback.
+    </video>
     ` : `
       <div class="w-full h-40 flex items-center justify-center text-xs text-white bg-gray-800">No video</div>
     `}
