@@ -1,8 +1,8 @@
-.bg-blue-600 {
+.bg-mauve-600 {
 --tw-bg-opacity: 1;
 background-color: rgba(127, 94, 125, 1);
 }
-.text-blue-600 {
+.text-mauve-600 {
 --tw-text-opacity: 1;
 color: rgb(127 94 125 / var(--tw-text-opacity, 1));
 }
@@ -16,12 +16,12 @@ background-color: rgb(127 94 125 / var(--tw-bg-opacity, 1));
 background-color: rgba(0, 0, 0, 1);
 }
 
-.bg-yellow-500 {
+.bg-mandrin-500 {
 --tw-bg-opacity: 1;
 background-color: rgba(192, 122, 112, 1);
 }
 
-.hover\:bg-yellow-600:hover {
+.hover\:bg-mandrin-600:hover {
 --tw-bg-opacity: 1;
 background-color: rgb(192 122 112 / var(--tw-bg-opacity, 1));
 }
