@@ -60,10 +60,10 @@ class SubjectUpdate(BaseModel):
     name: constr(min_length=1, max_length=100)
 
 class ChapterCreate(BaseModel):
-    title: constr(min_length=1, max_length=100)
+    name: constr(min_length=1, max_length=100)
 
 class ChapterUpdate(BaseModel):
-    title: constr(min_length=1, max_length=100)
+    name: constr(min_length=1, max_length=100)
 
 # Patch: Add validator to StudentUpdate for password strength
 class StudentUpdate(BaseModel):
@@ -417,14 +417,13 @@ def delete_subject(subject_id: int, user=Depends(get_current_user)):
         conn.close()
 
 
-
 @app.get("/subjects/{subject_id}/chapters")
 def get_chapters_for_subject(subject_id: int, user=Depends(get_current_user)):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute("SELECT id, title FROM chapters WHERE subject_id = %s AND obsolete = FALSE ORDER BY id", (subject_id,))
-        return [{"id": row[0], "title": row[1]} for row in cur.fetchall()]
+        cur.execute("SELECT id, name FROM chapters WHERE subject_id = %s AND obsolete = FALSE ORDER BY id", (subject_id,))
+        return [{"id": row[0], "name": row[1]} for row in cur.fetchall()]
     finally:
         cur.close()
         conn.close()
@@ -438,18 +437,17 @@ def create_chapter(subject_id: int, chapter: ChapterCreate, user=Depends(get_cur
     cur = conn.cursor()
     try:
         cur.execute(
-            "INSERT INTO chapters (subject_id, title) VALUES (%s, %s) RETURNING id",
-            (subject_id, chapter.title.strip())
+            "INSERT INTO chapters (subject_id, name) VALUES (%s, %s) RETURNING id",
+            (subject_id, chapter.name.strip())
         )
         conn.commit()
-        return {"id": cur.fetchone()[0], "title": chapter.title}
+        return {"id": cur.fetchone()[0], "name": chapter.name}
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=str(e))
     finally:
         cur.close()
         conn.close()
-
 
 @app.patch("/chapters/{chapter_id}")
 def update_chapter(chapter_id: int, updates: ChapterUpdate, user=Depends(get_current_user)):
@@ -458,7 +456,7 @@ def update_chapter(chapter_id: int, updates: ChapterUpdate, user=Depends(get_cur
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute("UPDATE chapters SET title = %s WHERE id = %s", (updates.title.strip(), chapter_id))
+        cur.execute("UPDATE chapters SET name = %s WHERE id = %s", (updates.name.strip(), chapter_id))
         conn.commit()
         return {"message": "Chapter updated"}
     except Exception as e:
@@ -467,6 +465,7 @@ def update_chapter(chapter_id: int, updates: ChapterUpdate, user=Depends(get_cur
     finally:
         cur.close()
         conn.close()
+
 
 
 @app.delete("/chapters/{chapter_id}")
