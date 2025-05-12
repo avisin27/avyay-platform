@@ -7,6 +7,8 @@
   <title>Submit Reflection</title>
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center">
+
+<!-- Navigation -->
 <div class="fixed top-4 left-4 space-x-2 z-50">
   <a href="dashboard.html" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 shadow">
     Dashboard
@@ -16,38 +18,55 @@
   </button>
 </div>
 
-  <div class="bg-white p-8 rounded-xl shadow-md w-full max-w-md space-y-6">
-    <h2 class="text-2xl font-bold text-gray-800 text-center">Submit Reflection</h2>
+<!-- Form Container -->
+<div class="bg-white p-8 rounded-xl shadow-md w-full max-w-md space-y-6">
+  <h2 class="text-2xl font-bold text-gray-800 text-center">Submit Reflection</h2>
 
-<form id="submit-form" class="space-y-4" enctype="multipart/form-data">
-  <select id="chapter-id" class="w-full p-3 border rounded-lg" required></select>
+  <form id="submit-form" class="space-y-4" enctype="multipart/form-data">
+    <select id="chapter-id" class="w-full p-3 border rounded-lg" required></select>
 
-  <input type="file" id="video-file" accept="video/*" class="w-full p-3 border rounded-lg" required />
+    <input type="file" id="video-file" accept="video/*" class="w-full p-3 border rounded-lg" required />
 
-  <textarea id="summary" rows="5" placeholder="Optional summary..." class="w-full p-3 border rounded-lg"></textarea>
+    <textarea id="summary" rows="5" placeholder="Optional summary..." class="w-full p-3 border rounded-lg"></textarea>
 
-  <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">Submit</button>
-</form>
+    <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">Submit</button>
+  </form>
 
+  <button onclick="logout()" class="w-full bg-red-500 text-white py-2 rounded-lg hover:bg-red-600">Logout</button>
+</div>
 
+<script>
+  const token = localStorage.getItem("token");
+  if (!token) window.location.href = "/";
 
-    <button onclick="logout()" class="w-full bg-red-500 text-white py-2 rounded-lg hover:bg-red-600">Logout</button>
-  </div>
-
-  <script>
+  function logout() {
+    localStorage.removeItem("token");
+    window.location.href = "/";
+  }
 
   const chapterSelect = document.getElementById("chapter-id");
 
-  // ✅ Load chapter list from backend
   async function loadChapters() {
     try {
-      const res = await fetch(`${API_BASE}/chapters`);
+      const res = await fetch(`${API_BASE}/chapters`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
       const chapters = await res.json();
+
+      if (chapters.length === 0) {
+        const opt = document.createElement("option");
+        opt.disabled = true;
+        opt.selected = true;
+        opt.textContent = "No chapters available";
+        chapterSelect.appendChild(opt);
+        return;
+      }
 
       chapters.forEach(chap => {
         const opt = document.createElement("option");
         opt.value = chap.id;
-        opt.textContent = chap.name;
+        opt.textContent = chap.obsolete ? `${chap.name} (Obsolete)` : chap.name;
+        if (chap.obsolete) opt.disabled = true;
         chapterSelect.appendChild(opt);
       });
     } catch (err) {
@@ -56,9 +75,6 @@
     }
   }
 
-  loadChapters();
-
-  // ✅ Submit reflection
   document.getElementById("submit-form").addEventListener("submit", async (e) => {
     e.preventDefault();
 
@@ -70,7 +86,7 @@
     const res = await fetch(`${API_BASE}/submit-reflection`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`
+        Authorization: `Bearer ${token}`
       },
       body: formData
     });
@@ -94,7 +110,7 @@
     }
   });
 
-  </script>
-
+  loadChapters();
+</script>
 </body>
 </html>
