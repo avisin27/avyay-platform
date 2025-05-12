@@ -212,10 +212,10 @@ def get_my_reflections(user=Depends(get_current_user)):
     cur = conn.cursor()
     try:
         cur.execute("""
-            SELECT r.chapter_id, c.name, r.video_url, r.text_summary, r.submitted_at
+            SELECT r.chapter_id, c.title, r.video_url, r.text_summary, r.submitted_at
             FROM reflections r
             JOIN chapters c ON r.chapter_id = c.id
-            WHERE r.user_id = %s
+            WHERE r.user_id = %s AND r.obsolete = FALSE AND c.obsolete = FALSE
             ORDER BY r.submitted_at DESC
         """, (user["user_id"],))
         return [{
@@ -245,7 +245,7 @@ def get_subjects(user=Depends(get_current_user)):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute("SELECT id, name FROM subjects ORDER BY name")
+        cur.execute("SELECT id, name FROM subjects WHERE obsolete = FALSE ORDER BY name")
         return [{"id": row[0], "name": row[1]} for row in cur.fetchall()]
     finally:
         cur.close()
@@ -323,7 +323,7 @@ def get_chapters_for_subject(subject_id: int, user=Depends(get_current_user)):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute("SELECT id, title FROM chapters WHERE subject_id = %s ORDER BY id", (subject_id,))
+        cur.execute("SELECT id, title FROM chapters WHERE subject_id = %s AND obsolete = FALSE ORDER BY id", (subject_id,))
         return [{"id": row[0], "title": row[1]} for row in cur.fetchall()]
     finally:
         cur.close()
@@ -417,7 +417,8 @@ def get_all_reflections(subject: Optional[str] = Query(None), email: Optional[st
         FROM reflections r
         JOIN users u ON r.user_id = u.id
         LEFT JOIN feedback f ON r.id = f.reflection_id
-        WHERE 1=1
+        JOIN chapters c ON r.chapter_id = c.id
+        WHERE r.obsolete = FALSE AND c.obsolete = FALSE AND f.obsolete = FALSE
     """
     params = []
     if subject:
@@ -476,7 +477,8 @@ def get_teacher_feedback(
         FROM feedback f
         JOIN reflections r ON f.reflection_id = r.id
         JOIN users u ON r.user_id = u.id
-        WHERE f.teacher_id = %s
+        JOIN chapters c ON r.chapter_id = c.id
+        WHERE f.teacher_id = %s AND f.obsolete = FALSE AND r.obsolete = FALSE AND c.obsolete = FALSE
     """
     params = [user["user_id"]]
 
