@@ -169,6 +169,50 @@ def update_user(updates: UserUpdate, user=Depends(get_current_user)):
         cur.close()
         conn.close()
 
+
+@app.delete("/students/{email}")
+def delete_student(email: str, user=Depends(get_current_user)):
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can delete students")
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM users WHERE email = %s AND role = 'student'", (email,))
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Student not found")
+        conn.commit()
+        return {"message": f"Student {email} deleted successfully"}
+    finally:
+        cur.close()
+        conn.close()
+
+
+class StudentUpdate(BaseModel):
+    name: Optional[str]
+    password: Optional[str]
+
+@app.patch("/students/{email}")
+def update_student(email: str, updates: StudentUpdate, user=Depends(get_current_user)):
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can update students")
+    if not updates.name and not updates.password:
+        raise HTTPException(status_code=400, detail="Nothing to update")
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        if updates.name:
+            cur.execute("UPDATE users SET name = %s WHERE email = %s AND role = 'student'", (updates.name.strip(), email))
+        if updates.password:
+            hashed_pw = hash_password(updates.password)
+            cur.execute("UPDATE users SET password = %s WHERE email = %s AND role = 'student'", (hashed_pw, email))
+        conn.commit()
+        return {"message": f"Student {email} updated successfully"}
+    finally:
+        cur.close()
+        conn.close()
+
 @app.post("/submit-reflection")
 def submit_reflection(
     chapter_id: int = Form(...),
