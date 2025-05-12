@@ -207,26 +207,39 @@ def submit_reflection(
         conn.close()
 
 @app.get("/my-reflections")
-def get_my_reflections(user=Depends(get_current_user)):
+def get_my_reflections(
+    subject_id: Optional[int] = Query(None),
+    user=Depends(get_current_user)
+):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute("""
-            SELECT r.chapter_id, c.title, r.video_url, r.text_summary, r.submitted_at
+        query = """
+            SELECT r.chapter_id, c.title, r.video_url, r.text_summary, r.submitted_at, r.obsolete
             FROM reflections r
             JOIN chapters c ON r.chapter_id = c.id
             WHERE r.user_id = %s AND r.obsolete = FALSE AND c.obsolete = FALSE
-            ORDER BY r.submitted_at DESC
-        """, (user["user_id"],))
+        """
+        params = [user["user_id"]]
+
+        if subject_id:
+            query += " AND c.subject_id = %s"
+            params.append(subject_id)
+
+        query += " ORDER BY r.submitted_at DESC"
+        cur.execute(query, tuple(params))
+
         return [{
             "chapter": row[1],
             "video_url": get_sas_url(row[2]),
             "summary": row[3],
-            "submitted_at": row[4].isoformat()
+            "submitted_at": row[4].isoformat(),
+            "obsolete": row[5]
         } for row in cur.fetchall()]
     finally:
         cur.close()
         conn.close()
+
 
 @app.get("/chapters")
 def get_chapters():
