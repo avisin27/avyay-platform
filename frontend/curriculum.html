@@ -10,12 +10,8 @@
 
   <!-- Navigation -->
   <div class="fixed top-4 left-4 space-x-2 z-50">
-    <a href="dashboard.html" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 shadow">
-      Dashboard
-    </a>
-    <button onclick="history.back()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 shadow">
-      Back
-    </button>
+    <a href="dashboard.html" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 shadow">Dashboard</a>
+    <button onclick="history.back()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 shadow">Back</button>
   </div>
 
   <!-- Main Container -->
@@ -32,7 +28,7 @@
         </select>
       </div>
 
-      <div id="add-subject-form" class="space-x-2">
+      <div id="add-subject-form" class="space-x-2 hidden">
         <input id="new-subject" placeholder="New Subject Name" class="px-4 py-2 border rounded w-64" />
         <button onclick="addSubject()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Add Subject</button>
       </div>
@@ -61,6 +57,11 @@
 
       const user = await res.json();
       userRole = user.role;
+
+      if (userRole === "teacher") {
+        document.getElementById("add-subject-form").classList.remove("hidden");
+      }
+
       fetchSubjects();
     }
 
@@ -84,22 +85,65 @@
 
         const li = document.createElement("li");
         li.className = "bg-gray-50 rounded p-4 space-y-2";
-        li.innerHTML = `
-          <div class="flex justify-between items-center">
-            <span class="font-semibold">${subject.name}</span>
+
+        const subjectHeader = document.createElement("div");
+        subjectHeader.className = "flex justify-between items-center";
+        subjectHeader.innerHTML = `<span class="font-semibold">${subject.name}</span>`;
+
+        if (userRole === "teacher") {
+          subjectHeader.innerHTML += `
             <div class="space-x-2">
               <button onclick="editSubject(${subject.id}, '${subject.name}')" class="text-yellow-600 hover:underline">Edit</button>
               <button onclick="deleteSubject(${subject.id})" class="text-red-600 hover:underline">Delete</button>
-            </div>
-          </div>
-          <div id="chapter-section-${subject.id}" class="pl-4 space-y-2">
-            <input id="new-chapter-${subject.id}" placeholder="New Chapter Title" class="px-2 py-1 border rounded w-64" />
-            <button onclick="addChapter(${subject.id})" class="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700">Add Chapter</button>
-            <ul id="chapter-list-${subject.id}" class="space-y-1"></ul>
-          </div>
-        `;
+            </div>`;
+        }
+
+        li.appendChild(subjectHeader);
+
+        const chapterSection = document.createElement("div");
+        chapterSection.id = `chapter-section-${subject.id}`;
+        chapterSection.className = "pl-4 space-y-2";
+
+        if (userRole === "teacher") {
+          chapterSection.innerHTML += `
+            <input id="new-chapter-${subject.id}" placeholder="New Chapter Name" class="px-2 py-1 border rounded w-64" />
+            <button onclick="addChapter(${subject.id})" class="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700">Add Chapter</button>`;
+        }
+
+        const chapterList = document.createElement("ul");
+        chapterList.id = `chapter-list-${subject.id}`;
+        chapterList.className = "space-y-1";
+        chapterSection.appendChild(chapterList);
+
+        li.appendChild(chapterSection);
         subjectList.appendChild(li);
         fetchChapters(subject.id);
+      });
+    }
+
+    async function fetchChapters(subjectId) {
+      const res = await fetch(`${API_BASE}/subjects/${subjectId}/chapters`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      const chapters = await res.json();
+      const list = document.getElementById(`chapter-list-${subjectId}`);
+      list.innerHTML = "";
+
+      chapters.forEach((chapter) => {
+        const li = document.createElement("li");
+        li.className = "flex justify-between items-center bg-white px-2 py-1 rounded";
+        li.innerHTML = `<span>${chapter.name}</span>`;
+
+        if (userRole === "teacher") {
+          li.innerHTML += `
+            <div class="space-x-2">
+              <button onclick="editChapter(${chapter.id}, '${chapter.name}', ${subjectId})" class="text-yellow-600 hover:underline">Edit</button>
+              <button onclick="deleteChapter(${chapter.id}, ${subjectId})" class="text-red-600 hover:underline">Delete</button>
+            </div>`;
+        }
+
+        list.appendChild(li);
       });
     }
 
@@ -153,58 +197,32 @@
       else alert("Failed to delete subject");
     }
 
-async function addChapter(subjectId) {
-  const input = document.getElementById(`new-chapter-${subjectId}`);
-  const title = input.value.trim();
-  if (!title) return alert("Enter a chapter title");
+    async function addChapter(subjectId) {
+      const input = document.getElementById(`new-chapter-${subjectId}`);
+      const name = input.value.trim();
+      if (!name) return alert("Enter a chapter name");
 
-  const res = await fetch(`${API_BASE}/subjects/${subjectId}/chapters`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ title })
-  });
-
-  const result = await res.json();
-
-  if (res.ok) {
-    input.value = "";
-    fetchChapters(subjectId);
-  } else {
-    console.error("Chapter creation failed:", result);
-    alert(result.detail || "Failed to add chapter");
-  }
-}
-
-
-    async function fetchChapters(subjectId) {
       const res = await fetch(`${API_BASE}/subjects/${subjectId}/chapters`, {
-        headers: { Authorization: `Bearer ${token}` }
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ name })
       });
 
-      const chapters = await res.json();
-      const list = document.getElementById(`chapter-list-${subjectId}`);
-      list.innerHTML = "";
-
-      chapters.forEach((chapter) => {
-        const li = document.createElement("li");
-        li.className = "flex justify-between items-center bg-white px-2 py-1 rounded";
-        li.innerHTML = `
-          <span>${chapter.title}</span>
-          <div class="space-x-2">
-            <button onclick="editChapter(${chapter.id}, '${chapter.title}', ${subjectId})" class="text-yellow-600 hover:underline">Edit</button>
-            <button onclick="deleteChapter(${chapter.id}, ${subjectId})" class="text-red-600 hover:underline">Delete</button>
-          </div>
-        `;
-        list.appendChild(li);
-      });
+      if (res.ok) {
+        input.value = "";
+        fetchChapters(subjectId);
+      } else {
+        const result = await res.json();
+        alert(result.detail || "Failed to add chapter");
+      }
     }
 
-    async function editChapter(id, currentTitle, subjectId) {
-      const newTitle = prompt("Edit chapter title:", currentTitle);
-      if (!newTitle || newTitle === currentTitle) return;
+    async function editChapter(id, currentName, subjectId) {
+      const newName = prompt("Edit chapter name:", currentName);
+      if (!newName || newName === currentName) return;
 
       const res = await fetch(`${API_BASE}/chapters/${id}`, {
         method: "PATCH",
@@ -212,7 +230,7 @@ async function addChapter(subjectId) {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ title: newTitle })
+        body: JSON.stringify({ name: newName })
       });
 
       if (res.ok) fetchChapters(subjectId);
@@ -231,22 +249,20 @@ async function addChapter(subjectId) {
       else alert("Failed to delete chapter");
     }
 
-function onSubjectChange() {
-  const subjectId = document.getElementById("subject-select").value;
+    function onSubjectChange() {
+      const subjectId = document.getElementById("subject-select").value;
 
-  document.querySelectorAll("[id^='chapter-section-']").forEach(el => {
-    el.style.display = "none";
-  });
+      document.querySelectorAll("[id^='chapter-section-']").forEach(el => {
+        el.style.display = "none";
+      });
 
-  if (subjectId) {
-    const section = document.getElementById(`chapter-section-${subjectId}`);
-    if (section) section.style.display = "block";
-  }
-}
-
+      if (subjectId) {
+        const section = document.getElementById(`chapter-section-${subjectId}`);
+        if (section) section.style.display = "block";
+      }
+    }
 
     fetchUser();
   </script>
-
 </body>
 </html>
