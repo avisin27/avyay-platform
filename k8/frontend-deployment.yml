@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: reflectacr.azurecr.io/avyay-frontend:latest
+          image: reflectacr.azurecr.io/avyay-frontend:latest2
           imagePullPolicy: Always
           ports:
             - containerPort: 80
