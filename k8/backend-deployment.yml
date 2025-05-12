@@ -59,6 +59,8 @@ spec:
               value: sv=2024-11-04&ss=bf&srt=co&sp=rwdlactfx&se=2025-05-31T14:25:33Z&st=2025-05-11T06:25:33Z&spr=https,http&sig=mcjGtWkXCcOKblFazu0lxYjAYmGXXX9JfWZHE85WPP8%3D
             - name: AZURE_STORAGE_CONNECTION_STRING
               value: DefaultEndpointsProtocol=https;AccountName=reflectstorage;AccountKey=h5PaAwcLOsY0in3OxS4XQwgBLOEsJANeMlLc0/JAERpij/IroYD/E3hkITIG81gHaPNHERR55YES+AStj7xtxw==;EndpointSuffix=core.windows.net
+            - name: AZURE_STORAGE_ACCOUNT_KEY
+              value: h5PaAwcLOsY0in3OxS4XQwgBLOEsJANeMlLc0/JAERpij/IroYD/E3hkITIG81gHaPNHERR55YES+AStj7xtxw==
             - name: DB_HOST
               valueFrom:
                 secretKeyRef:
