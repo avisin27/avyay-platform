@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="config.js"></script>
+  <title>My Students</title>
+</head>
+<body class="bg-gray-100 min-h-screen p-6">
+
+  <!-- Navigation -->
+  <div class="fixed top-4 left-4 space-x-2 z-50">
+    <a href="dashboard.html" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 shadow">Dashboard</a>
+    <button onclick="history.back()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 shadow">Back</button>
+  </div>
+
+  <div class="max-w-3xl mx-auto bg-white p-6 rounded-xl shadow space-y-8">
+    <h1 class="text-2xl font-bold text-center text-gray-800">Manage Students</h1>
+
+    <!-- Add Student Form -->
+    <form id="add-student-form" class="space-y-4">
+      <input type="text" id="student-name" placeholder="Student Name" required class="w-full p-2 border rounded" />
+      <input type="email" id="student-email" placeholder="Email" required class="w-full p-2 border rounded" />
+      <input type="password" id="student-password" placeholder="Password" required class="w-full p-2 border rounded" />
+      <input type="password" id="student-confirm-password" placeholder="Confirm Password" required class="w-full p-2 border rounded" />
+      <button type="submit" class="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700">Add Student</button>
+    </form>
+
+    <!-- Student List -->
+    <div>
+      <h2 class="text-xl font-semibold text-gray-800 mb-4">All Students</h2>
+      <ul id="student-list" class="space-y-3"></ul>
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem("token");
+    if (!token) window.location.href = "login.html";
+
+    const API = `${API_BASE}`;
+
+    const studentList = document.getElementById("student-list");
+    const form = document.getElementById("add-student-form");
+
+    // Add Student
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const name = document.getElementById("student-name").value.trim();
+      const email = document.getElementById("student-email").value.trim();
+      const password = document.getElementById("student-password").value;
+      const confirm = document.getElementById("student-confirm-password").value;
+
+      if (!name || !email || !password || !confirm) return alert("All fields are required.");
+      if (password !== confirm) return alert("Passwords do not match.");
+      if (!/^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/.test(password)) {
+        return alert("Password must include uppercase, lowercase, number, special character and be 8+ characters.");
+      }
+
+      const res = await fetch(`${API}/create-user`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ name, email, password, role: "student" })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        alert("Student added!");
+        form.reset();
+        fetchStudents();
+      } else {
+        alert(data.detail || "Failed to add student.");
+      }
+    });
+
+    async function fetchStudents() {
+      const res = await fetch(`${API}/students/emails`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      const emails = await res.json();
+      studentList.innerHTML = "";
+
+      emails.forEach(email => {
+        const li = document.createElement("li");
+        li.className = "bg-gray-50 p-3 rounded shadow flex justify-between items-center";
+        li.innerHTML = `
+          <div>
+            <p class="text-gray-700 font-medium">${email}</p>
+          </div>
+          <div class="space-x-2">
+            <button onclick="editStudent('${email}')" class="text-yellow-600 hover:underline">Edit</button>
+            <button onclick="deleteStudent('${email}')" class="text-red-600 hover:underline">Delete</button>
+          </div>
+        `;
+        studentList.appendChild(li);
+      });
+    }
+
+    // Placeholder functions for editing & deleting
+    function editStudent(email) {
+      alert("Edit functionality not implemented yet for: " + email);
+      // Here you could show a form pre-filled with name/email and allow editing
+    }
+
+    async function deleteStudent(email) {
+      if (!confirm(`Delete student ${email}?`)) return;
+      alert("Delete functionality not implemented yet for: " + email);
+      // Implement an endpoint `/delete-user?email=` and call it here
+    }
+
+    fetchStudents();
+  </script>
+</body>
+</html>
