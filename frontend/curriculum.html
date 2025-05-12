@@ -46,199 +46,175 @@
     </div>
 
   </div>
+<script>
+  const token = localStorage.getItem("token");
+  if (!token) window.location.href = "login.html";
 
-  <script>
-    const token = localStorage.getItem("token");
-    if (!token) window.location.href = "login.html";
+  let userRole = null;
+  let currentSubjectId = null;
+  let currentSubjectObsolete = false;
 
-    let userRole = null;
-    let currentSubjectId = null;
-    let currentSubjectObsolete = false;
+  async function fetchUser() {
+    const res = await fetch(`${API_BASE}/me`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
 
-    async function fetchUser() {
-      const res = await fetch(`${API_BASE}/me`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
+    if (!res.ok) {
+      localStorage.removeItem("token");
+      window.location.href = "/";
+      return;
+    }
 
-      if (!res.ok) {
-        localStorage.removeItem("token");
-        window.location.href = "/";
-        return;
-      }
+    const user = await res.json();
+    userRole = user.role;
 
-      const user = await res.json();
-      userRole = user.role;
-      if (userRole === "teacher") {
-        document.getElementById("add-subject-form").classList.remove("hidden");
-      }
+    if (userRole === "teacher") {
+      document.getElementById("add-subject-form").classList.remove("hidden");
+    }
 
+    fetchSubjects();
+  }
+
+  async function fetchSubjects() {
+    const res = await fetch(`${API_BASE}/subjects`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    const subjects = await res.json();
+    const select = document.getElementById("subject-select");
+    select.innerHTML = '<option value="">Select a subject</option>';
+
+    subjects.forEach((subject) => {
+      const option = document.createElement("option");
+      option.value = subject.id;
+      option.textContent = subject.name + (subject.obsolete ? " (Obsolete)" : "");
+      if (subject.obsolete) option.disabled = true;
+      select.appendChild(option);
+    });
+  }
+
+  function onSubjectChange() {
+    const select = document.getElementById("subject-select");
+    const selectedId = select.value;
+    currentSubjectId = selectedId || null;
+    currentSubjectObsolete = select.options[select.selectedIndex]?.textContent.includes("Obsolete");
+
+    const chapterForm = document.getElementById("add-chapter-form");
+    if (userRole === "teacher" && currentSubjectId && !currentSubjectObsolete) {
+      chapterForm.classList.remove("hidden");
+    } else {
+      chapterForm.classList.add("hidden");
+    }
+
+    if (currentSubjectId) fetchChapters(currentSubjectId);
+    else document.getElementById("chapter-list").innerHTML = "";
+  }
+
+  async function fetchChapters(subjectId) {
+    const res = await fetch(`${API_BASE}/subjects/${subjectId}/chapters`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    const chapters = await res.json();
+    const container = document.getElementById("chapter-list");
+    container.innerHTML = "";
+
+    chapters.forEach((chapter) => {
+      const isObsolete = chapter.obsolete;
+      const li = document.createElement("li");
+      li.className = "flex items-center justify-between bg-gray-50 p-2 rounded";
+
+      li.innerHTML = `
+        <span class="${isObsolete ? 'text-gray-400 line-through' : ''}">
+          ${chapter.title}${isObsolete ? ' <span class="text-red-500 text-sm">(Obsolete)</span>' : ''}
+        </span>
+        ${
+          userRole === "teacher" && !isObsolete
+            ? `<div class="space-x-2">
+                <button onclick="editChapter(${chapter.id}, '${chapter.title}')" class="text-yellow-600 hover:underline">Edit</button>
+                <button onclick="deleteChapter(${chapter.id})" class="text-red-600 hover:underline">Delete</button>
+              </div>`
+            : ""
+        }
+      `;
+      container.appendChild(li);
+    });
+  }
+
+  async function addSubject() {
+    const name = document.getElementById("new-subject").value.trim();
+    if (!name) return alert("Enter a subject name");
+
+    const res = await fetch(`${API_BASE}/subjects`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ name })
+    });
+
+    if (res.ok) {
+      document.getElementById("new-subject").value = "";
       fetchSubjects();
+    } else {
+      alert("Failed to add subject");
     }
+  }
 
-    async function fetchSubjects() {
-      const res = await fetch(`${API_BASE}/subjects`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
+  async function addChapter() {
+    const title = document.getElementById("new-chapter").value.trim();
+    if (!title) return alert("Enter a chapter title");
+    if (!currentSubjectId) return alert("Select a subject first");
 
-      const subjects = await res.json();
-      const container = document.getElementById("subject-list");
-      container.innerHTML = "";
+    const res = await fetch(`${API_BASE}/subjects/${currentSubjectId}/chapters`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ title })
+    });
 
-      subjects.forEach(subject => {
-        const li = document.createElement("li");
-        li.className = "flex items-center justify-between bg-gray-100 p-2 rounded";
-
-        const label = subject.obsolete ? '<span class="text-red-500 text-sm ml-2">(Obsolete)</span>' : '';
-        const lineClass = subject.obsolete ? 'text-gray-400 line-through' : '';
-
-        li.innerHTML = `
-          <span class="cursor-pointer font-medium ${lineClass}" 
-                onclick="selectSubject(${subject.id}, '${subject.name}', ${subject.obsolete})">
-            ${subject.name} ${label}
-          </span>
-          ${userRole === 'teacher' && !subject.obsolete ? `
-            <div class="space-x-2">
-              <button onclick="editSubject(${subject.id}, '${subject.name}')" class="text-yellow-600 hover:underline">Edit</button>
-              <button onclick="deleteSubject(${subject.id})" class="text-red-600 hover:underline">Delete</button>
-            </div>` : ''}
-        `;
-        container.appendChild(li);
-      });
-    }
-
-    function selectSubject(id, name, isObsolete) {
-      currentSubjectId = id;
-      currentSubjectObsolete = isObsolete;
-
-      const addForm = document.getElementById("add-chapter-form");
-      if (userRole === "teacher" && !isObsolete) {
-        addForm.classList.remove("hidden");
-      } else {
-        addForm.classList.add("hidden");
-      }
-
-      fetchChapters(id);
-    }
-
-    async function fetchChapters(subjectId) {
-      const res = await fetch(`${API_BASE}/subjects/${subjectId}/chapters`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-
-      const chapters = await res.json();
-      const container = document.getElementById("chapter-list");
-      container.innerHTML = "";
-
-      chapters.forEach(chapter => {
-        const isObsolete = chapter.obsolete;
-        const label = isObsolete ? '<span class="text-red-500 text-sm ml-2">(Obsolete)</span>' : '';
-        const lineClass = isObsolete ? 'text-gray-400 line-through' : '';
-
-        const li = document.createElement("li");
-        li.className = "flex items-center justify-between bg-gray-50 p-2 rounded";
-
-        li.innerHTML = `
-          <span class="${lineClass}">${chapter.title} ${label}</span>
-          ${userRole === 'teacher' && !isObsolete ? `
-            <div class="space-x-2">
-              <button onclick="editChapter(${chapter.id}, '${chapter.title}')" class="text-yellow-600 hover:underline">Edit</button>
-              <button onclick="deleteChapter(${chapter.id})" class="text-red-600 hover:underline">Delete</button>
-            </div>` : ''}
-        `;
-        container.appendChild(li);
-      });
-    }
-
-    async function addSubject() {
-      const name = document.getElementById("new-subject").value.trim();
-      if (!name) return alert("Enter a subject name");
-
-      const res = await fetch(`${API_BASE}/subjects`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ name })
-      });
-
-      if (res.ok) {
-        document.getElementById("new-subject").value = "";
-        fetchSubjects();
-      } else {
-        alert("Failed to add subject");
-      }
-    }
-
-    async function deleteSubject(id) {
-      if (!confirm("Delete this subject?")) return;
-      await fetch(`${API_BASE}/subjects/${id}`, {
-        method: "DELETE",
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      fetchSubjects();
-      document.getElementById("chapter-list").innerHTML = "";
-    }
-
-    async function editSubject(id, currentName) {
-      const newName = prompt("Edit subject name:", currentName);
-      if (!newName || newName === currentName) return;
-
-      await fetch(`${API_BASE}/subjects/${id}`, {
-        method: "PATCH",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ name: newName })
-      });
-      fetchSubjects();
-    }
-
-    async function addChapter() {
-      const title = document.getElementById("new-chapter").value.trim();
-      if (!title) return alert("Enter a chapter title");
-      if (!currentSubjectId) return alert("Select a subject first");
-
-      await fetch(`${API_BASE}/subjects/${currentSubjectId}/chapters`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ title })
-      });
-
+    if (res.ok) {
       document.getElementById("new-chapter").value = "";
       fetchChapters(currentSubjectId);
+    } else {
+      alert("Failed to add chapter");
     }
+  }
 
-    async function deleteChapter(id) {
-      if (!confirm("Delete this chapter?")) return;
-      await fetch(`${API_BASE}/chapters/${id}`, {
-        method: "DELETE",
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      fetchChapters(currentSubjectId);
-    }
+  async function deleteChapter(id) {
+    if (!confirm("Delete this chapter?")) return;
 
-    async function editChapter(id, currentTitle) {
-      const newTitle = prompt("Edit chapter title:", currentTitle);
-      if (!newTitle || newTitle === currentTitle) return;
+    const res = await fetch(`${API_BASE}/chapters/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` }
+    });
 
-      await fetch(`${API_BASE}/chapters/${id}`, {
-        method: "PATCH",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ title: newTitle })
-      });
+    if (res.ok) fetchChapters(currentSubjectId);
+    else alert("Failed to delete chapter");
+  }
 
-      fetchChapters(currentSubjectId);
-    }
+  async function editChapter(id, currentTitle) {
+    const newTitle = prompt("Edit chapter title:", currentTitle);
+    if (!newTitle || newTitle === currentTitle) return;
 
-    fetchUser();
-  </script>
+    const res = await fetch(`${API_BASE}/chapters/${id}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ title: newTitle })
+    });
+
+    if (res.ok) fetchChapters(currentSubjectId);
+    else alert("Failed to edit chapter");
+  }
+
+  fetchUser();
+</script>
+
 </body>
 </html>

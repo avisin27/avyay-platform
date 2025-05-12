@@ -65,6 +65,31 @@ class ChapterCreate(BaseModel):
 class ChapterUpdate(BaseModel):
     title: constr(min_length=1, max_length=100)
 
+# Patch: Add validator to StudentUpdate for password strength
+class StudentUpdate(BaseModel):
+    name: Optional[str]
+    password: Optional[str]
+
+    @validator("password")
+    def password_strength(cls, v):
+        if v is None:
+            return v
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Password must include at least one uppercase letter.")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("Password must include at least one lowercase letter.")
+        if not re.search(r"\d", v):
+            raise ValueError("Password must include at least one number.")
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", v):
+            raise ValueError("Password must include at least one special character.")
+        return v
+
+
+# Patch: Health check endpoint
+@app.get("/healthz")
+def health_check():
+    return {"status": "ok"}
+
 # ----- Environment Config -----
 ENV = os.getenv("ENV", "local")
 AZURE_CONTAINER = os.getenv("AZURE_STORAGE_CONTAINER_NAME", "uploads")
@@ -165,6 +190,68 @@ def update_user(updates: UserUpdate, user=Depends(get_current_user)):
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+
+
+# Patch: Alternative route for frontend compatibility
+@app.delete("/delete-user")
+def delete_user(email: str = Query(...), user=Depends(get_current_user)):
+    return delete_student(email=email, user=user)
+
+
+# Patch: Override delete_student to mark reflections and feedback as obsolete
+@app.delete("/students/{email}")
+def delete_student(email: str, user=Depends(get_current_user)):
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can delete students")
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        # Soft delete reflections and feedback
+        cur.execute("SELECT id FROM users WHERE email = %s AND role = 'student'", (email,))
+        student = cur.fetchone()
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+        student_id = student[0]
+
+        cur.execute("UPDATE reflections SET obsolete = TRUE WHERE user_id = %s", (student_id,))
+        cur.execute("""
+            UPDATE feedback SET obsolete = TRUE 
+            WHERE reflection_id IN (SELECT id FROM reflections WHERE user_id = %s)
+        """, (student_id,))
+        cur.execute("DELETE FROM users WHERE id = %s", (student_id,))
+
+        conn.commit()
+        return {"message": f"Student {email} and their reflections/feedback marked as obsolete and deleted"}
+    finally:
+        cur.close()
+        conn.close()
+
+
+class StudentUpdate(BaseModel):
+    name: Optional[str]
+    password: Optional[str]
+
+@app.patch("/students/{email}")
+def update_student(email: str, updates: StudentUpdate, user=Depends(get_current_user)):
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can update students")
+    if not updates.name and not updates.password:
+        raise HTTPException(status_code=400, detail="Nothing to update")
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        if updates.name:
+            cur.execute("UPDATE users SET name = %s WHERE email = %s AND role = 'student'", (updates.name.strip(), email))
+        if updates.password:
+            hashed_pw = hash_password(updates.password)
+            cur.execute("UPDATE users SET password = %s WHERE email = %s AND role = 'student'", (hashed_pw, email))
+        conn.commit()
+        return {"message": f"Student {email} updated successfully"}
     finally:
         cur.close()
         conn.close()
@@ -420,7 +507,12 @@ def get_student_emails(user=Depends(get_current_user)):
         conn.close()
 
 @app.get("/all-reflections")
-def get_all_reflections(subject: Optional[str] = Query(None), email: Optional[str] = Query(None), user=Depends(get_current_user)):
+def get_all_reflections(
+    email: Optional[str] = Query(None),
+    subject_id: Optional[int] = Query(None),
+    chapter_id: Optional[int] = Query(None),
+    user=Depends(get_current_user)
+):
     if user["role"] != "teacher":
         raise HTTPException(status_code=403, detail="Access denied")
 
@@ -431,15 +523,34 @@ def get_all_reflections(subject: Optional[str] = Query(None), email: Optional[st
         JOIN users u ON r.user_id = u.id
         LEFT JOIN feedback f ON r.id = f.reflection_id
         JOIN chapters c ON r.chapter_id = c.id
-        WHERE r.obsolete = FALSE AND c.obsolete = FALSE AND f.obsolete = FALSE
+        WHERE r.obsolete = FALSE AND c.obsolete = FALSE AND (f.obsolete = FALSE OR f.obsolete IS NULL)
     """
     params = []
-    if subject:
-        query += " AND r.chapter_id::text = %s"
-        params.append(subject)
+
     if email:
         query += " AND u.email = %s"
         params.append(email)
+
+    if chapter_id:
+        query += " AND r.chapter_id = %s"
+        params.append(chapter_id)
+
+    elif subject_id:
+        # Get chapter IDs for this subject
+        conn = get_db_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute("SELECT id FROM chapters WHERE subject_id = %s AND obsolete = FALSE", (subject_id,))
+            chapter_ids = [row[0] for row in cur.fetchall()]
+        finally:
+            cur.close()
+            conn.close()
+
+        if not chapter_ids:
+            return []  # No chapters = no reflections
+
+        query += " AND r.chapter_id = ANY(%s)"
+        params.append(chapter_ids)
 
     query += " ORDER BY r.submitted_at DESC"
 
@@ -448,13 +559,19 @@ def get_all_reflections(subject: Optional[str] = Query(None), email: Optional[st
     try:
         cur.execute(query, tuple(params))
         return [{
-            "id": r[0], "email": r[1], "chapter_id": r[2], "video_url": get_sas_url(r[3]),
-            "text_summary": r[4], "submitted_at": r[5].isoformat(),
-            "status": r[6], "comment": r[7],
+            "id": r[0],
+            "email": r[1],
+            "chapter_id": r[2],
+            "video_url": get_sas_url(r[3]),
+            "text_summary": r[4],
+            "submitted_at": r[5].isoformat(),
+            "status": r[6],
+            "comment": r[7],
         } for r in cur.fetchall()]
     finally:
         cur.close()
         conn.close()
+
 
 @app.post("/teacher/feedback")
 def submit_feedback(data: FeedbackCreate, user=Depends(get_current_user)):
