@@ -9,8 +9,8 @@
 <body class="bg-cover bg-center min-h-screen flex items-center justify-center"
       style="background-image: url('/images/feed.jpg');">
   <div class="fixed top-4 left-4 space-x-2 z-50">
-    <a href="dashboard.html" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 shadow">Dashboard</a>
-    <button onclick="history.back()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 shadow">Back</button>
+   <a href="dashboard.html" class="bg-mauve-600 text-white px-4 py-2 rounded hover:bg-mauve-700 shadow">Dashboard</a>
+    <button onclick="history.back()" class="bg-onyx-500 text-white px-4 py-2 rounded hover:bg-onyx-600 shadow">Back</button>
   </div>
 
   <div class="max-w-5xl mx-auto bg-white p-6 rounded-xl shadow space-y-6">
@@ -27,7 +27,7 @@
   <select id="chapter-filter" class="px-4 py-2 border rounded-lg">
     <option value="">All Chapters</option>
   </select>
-  <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">Filter</button>
+  <button type="submit" class="bg-mauve-600 text-white px-6 py-2 rounded-lg hover:bg-mauve-700">Filter</button>
 </form>
 
 
@@ -50,7 +50,7 @@
     staticFeedback.innerHTML = `
       <div class="text-sm text-green-800"><strong>Status:</strong> ${status}</div>
       <div class="text-sm text-gray-800"><strong>Comment:</strong> ${comment || "(No comment)"}</div>
-      <button class="edit-btn bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">Edit Feedback</button>
+      <button class="edit-btn bg-mandrin-500 text-white px-4 py-2 rounded hover:bg-mandrin-600">Edit Feedback</button>
     `;
 
     form.style.display = "none";
@@ -172,14 +172,14 @@
       card.className = "p-6 border rounded-xl bg-gray-50 space-y-2";
 
       const chapterName = chapterMap[ref.chapter_id] || `Chapter ${ref.chapter_id}`;
-      const chapterLabel = `<span class="text-blue-900 font-medium">${chapterName}</span>`;
+      const chapterLabel = `<span class="text-mauve-900 font-medium">${chapterName}</span>`;
 
       const safeVideoURL = ref.video_url?.startsWith("http")
         ? ref.video_url
         : `${API_BASE}${ref.video_url || ""}`;
 
       card.innerHTML = `
-        <div class="font-bold text-blue-800">Student: ${ref.email}</div>
+        <div class="font-bold text-gray-800">Student: ${ref.email}</div>
         <div class="text-sm text-gray-600">Chapter: ${chapterLabel}</div>
         <div class="mt-2">
           ${
