@@ -158,14 +158,14 @@
       const title = input.value.trim();
       if (!title) return alert("Enter a chapter title");
 
-      const res = await fetch(`${API_BASE}/subjects/${subjectId}/chapters`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ title })
-      });
+const res = await fetch(`${API_BASE}/chapters`, {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({ title, subject_id: subjectId })
+});
 
       if (res.ok) {
         input.value = "";
