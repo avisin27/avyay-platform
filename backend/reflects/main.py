@@ -65,6 +65,31 @@ class ChapterCreate(BaseModel):
 class ChapterUpdate(BaseModel):
     title: constr(min_length=1, max_length=100)
 
+# Patch: Add validator to StudentUpdate for password strength
+class StudentUpdate(BaseModel):
+    name: Optional[str]
+    password: Optional[str]
+
+    @validator("password")
+    def password_strength(cls, v):
+        if v is None:
+            return v
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Password must include at least one uppercase letter.")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("Password must include at least one lowercase letter.")
+        if not re.search(r"\d", v):
+            raise ValueError("Password must include at least one number.")
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", v):
+            raise ValueError("Password must include at least one special character.")
+        return v
+
+
+# Patch: Health check endpoint
+@app.get("/healthz")
+def health_check():
+    return {"status": "ok"}
+
 # ----- Environment Config -----
 ENV = os.getenv("ENV", "local")
 AZURE_CONTAINER = os.getenv("AZURE_STORAGE_CONTAINER_NAME", "uploads")
@@ -170,6 +195,13 @@ def update_user(updates: UserUpdate, user=Depends(get_current_user)):
         conn.close()
 
 
+# Patch: Alternative route for frontend compatibility
+@app.delete("/delete-user")
+def delete_user(email: str = Query(...), user=Depends(get_current_user)):
+    return delete_student(email=email, user=user)
+
+
+# Patch: Override delete_student to mark reflections and feedback as obsolete
 @app.delete("/students/{email}")
 def delete_student(email: str, user=Depends(get_current_user)):
     if user["role"] != "teacher":
@@ -178,11 +210,22 @@ def delete_student(email: str, user=Depends(get_current_user)):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute("DELETE FROM users WHERE email = %s AND role = 'student'", (email,))
-        if cur.rowcount == 0:
+        # Soft delete reflections and feedback
+        cur.execute("SELECT id FROM users WHERE email = %s AND role = 'student'", (email,))
+        student = cur.fetchone()
+        if not student:
             raise HTTPException(status_code=404, detail="Student not found")
+        student_id = student[0]
+
+        cur.execute("UPDATE reflections SET obsolete = TRUE WHERE user_id = %s", (student_id,))
+        cur.execute("""
+            UPDATE feedback SET obsolete = TRUE 
+            WHERE reflection_id IN (SELECT id FROM reflections WHERE user_id = %s)
+        """, (student_id,))
+        cur.execute("DELETE FROM users WHERE id = %s", (student_id,))
+
         conn.commit()
-        return {"message": f"Student {email} deleted successfully"}
+        return {"message": f"Student {email} and their reflections/feedback marked as obsolete and deleted"}
     finally:
         cur.close()
         conn.close()
