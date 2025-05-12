@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/styles.css" />
   <script src="config.js"></script>
   <title>Dashboard</title>
 </head>
@@ -41,7 +42,7 @@
     </div>
 
     <!-- Dashboard Features -->
-    <div id="dashboard-links" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    <div id="dashboard-links" class="grid grid-cols-1 md:grid-cols-2 gap-4" style="display: flex;"></div>
   </div>
 
   <script>
@@ -122,9 +123,9 @@
         container.innerHTML += button("My Reflections", "my-reflections.html", "purple");
         container.innerHTML += button("Submit New Reflection", "submit.html", "green");
       } else if (role === "teacher") {
-        container.innerHTML += button("My Students", "students.html");
-        container.innerHTML += button("Curriculum", "curriculum.html", "yellow");
-        container.innerHTML += button("All Reflections", "teacher-refs.html", "red");
+        container.innerHTML += button("My Students", "students.html", "brown");
+        container.innerHTML += button("Curriculum", "curriculum.html", "brown");
+        container.innerHTML += button("All Reflections", "teacher-refs.html", "brown");
       }
     }
 
