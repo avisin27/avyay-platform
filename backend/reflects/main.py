@@ -139,11 +139,11 @@ def read_me(user=Depends(get_current_user)):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute("SELECT email FROM users WHERE id = %s", (user["user_id"],))
+        cur.execute("SELECT name, email FROM users WHERE id = %s", (user["user_id"],))
         result = cur.fetchone()
         if not result:
             raise HTTPException(status_code=404, detail="User not found")
-        return {**user, "email": result[0]}
+        return {**user, "name": result[0], "email": result[1]}
     finally:
         cur.close()
         conn.close()
