@@ -53,6 +53,18 @@ class FeedbackCreate(BaseModel):
     status: Literal['understood', 'needs_review']
     comment: Optional[constr(max_length=500)]
 
+class SubjectCreate(BaseModel):
+    name: constr(min_length=1, max_length=100)
+
+class SubjectUpdate(BaseModel):
+    name: constr(min_length=1, max_length=100)
+
+class ChapterCreate(BaseModel):
+    title: constr(min_length=1, max_length=100)
+
+class ChapterUpdate(BaseModel):
+    title: constr(min_length=1, max_length=100)
+
 # ----- Environment Config -----
 ENV = os.getenv("ENV", "local")
 AZURE_CONTAINER = os.getenv("AZURE_STORAGE_CONTAINER_NAME", "uploads")
@@ -226,6 +238,142 @@ def get_chapters():
     finally:
         cur.close()
         conn.close()
+
+
+@app.get("/subjects")
+def get_subjects(user=Depends(get_current_user)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id, name FROM subjects ORDER BY name")
+        return [{"id": row[0], "name": row[1]} for row in cur.fetchall()]
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.post("/subjects")
+def create_subject(subject: SubjectCreate, user=Depends(get_current_user)):
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can create subjects")
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("INSERT INTO subjects (name) VALUES (%s) RETURNING id", (subject.name.strip(),))
+        conn.commit()
+        return {"id": cur.fetchone()[0], "name": subject.name}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.patch("/subjects/{subject_id}")
+def update_subject(subject_id: int, updates: SubjectUpdate, user=Depends(get_current_user)):
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can update subjects")
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("UPDATE subjects SET name = %s WHERE id = %s", (updates.name.strip(), subject_id))
+        conn.commit()
+        return {"message": "Subject updated"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.delete("/subjects/{subject_id}")
+def delete_subject(subject_id: int, user=Depends(get_current_user)):
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can delete subjects")
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM subjects WHERE id = %s", (subject_id,))
+        conn.commit()
+        return {"message": "Subject deleted"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.get("/subjects/{subject_id}/chapters")
+def get_chapters_for_subject(subject_id: int, user=Depends(get_current_user)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id, title FROM chapters WHERE subject_id = %s ORDER BY id", (subject_id,))
+        return [{"id": row[0], "title": row[1]} for row in cur.fetchall()]
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.post("/subjects/{subject_id}/chapters")
+def create_chapter(subject_id: int, chapter: ChapterCreate, user=Depends(get_current_user)):
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can create chapters")
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "INSERT INTO chapters (subject_id, title) VALUES (%s, %s) RETURNING id",
+            (subject_id, chapter.title.strip())
+        )
+        conn.commit()
+        return {"id": cur.fetchone()[0], "title": chapter.title}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.patch("/chapters/{chapter_id}")
+def update_chapter(chapter_id: int, updates: ChapterUpdate, user=Depends(get_current_user)):
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can update chapters")
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("UPDATE chapters SET title = %s WHERE id = %s", (updates.title.strip(), chapter_id))
+        conn.commit()
+        return {"message": "Chapter updated"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.delete("/chapters/{chapter_id}")
+def delete_chapter(chapter_id: int, user=Depends(get_current_user)):
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can delete chapters")
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM chapters WHERE id = %s", (chapter_id,))
+        conn.commit()
+        return {"message": "Chapter deleted"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+        
 
 @app.get("/students/emails")
 def get_student_emails(user=Depends(get_current_user)):
