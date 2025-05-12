@@ -227,9 +227,19 @@ const res = await fetch(`${API_BASE}/chapters`, {
       else alert("Failed to delete chapter");
     }
 
-    function onSubjectChange() {
-      // optional: if you want to show selected subject-specific content elsewhere
-    }
+function onSubjectChange() {
+  const subjectId = document.getElementById("subject-select").value;
+
+  document.querySelectorAll("[id^='chapter-section-']").forEach(el => {
+    el.style.display = "none";
+  });
+
+  if (subjectId) {
+    const section = document.getElementById(`chapter-section-${subjectId}`);
+    if (section) section.style.display = "block";
+  }
+}
+
 
     fetchUser();
   </script>
