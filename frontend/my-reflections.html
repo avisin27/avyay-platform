@@ -28,7 +28,7 @@
     </select>
   </div>
 
-  <ul id="reflections-list" class="space-y-4"></ul>
+  <ul id="reflections-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></ul>
   <button onclick="logout()" class="w-full bg-red-500 text-white py-2 rounded-lg hover:bg-red-600">Logout</button>
 </div>
 
@@ -93,16 +93,25 @@
       const item = document.createElement("li");
       item.className = "p-4 border rounded-lg text-left bg-gray-50";
 
-      item.innerHTML = `
-        <h3 class="font-semibold text-lg">${chapterTitle}</h3>
-        <p class="text-sm text-gray-500 mb-1">${new Date(ref.submitted_at).toLocaleString()}</p>
-        ${ref.video_url ? `
-          <video controls class="w-full mb-2">
-            <source src="${videoSrc}" type="video/mp4">
-            Your browser does not support video playback.
-          </video>` : `<p class="text-red-500 text-sm">No video uploaded.</p>`}
-        <p class="text-gray-700">${ref.summary || "<em class='text-gray-400'>No summary provided.</em>"}</p>
-      `;
+item.innerHTML = `
+  <div class="bg-white rounded-xl shadow hover:shadow-lg transition overflow-hidden flex flex-col h-full">
+    ${ref.video_url ? `
+      <video class="w-full h-40 object-cover" muted>
+        <source src="${videoSrc}" type="video/mp4">
+        Your browser does not support video playback.
+      </video>
+    ` : `
+      <div class="w-full h-40 flex items-center justify-center text-xs text-white bg-gray-800">No video</div>
+    `}
+    <div class="p-4 flex flex-col justify-between flex-grow">
+      <div>
+        <h3 class="text-md font-semibold text-gray-800">${chapterTitle}</h3>
+        <p class="text-xs text-gray-500">${new Date(ref.submitted_at).toLocaleString()}</p>
+      </div>
+      <p class="mt-2 text-gray-700 text-sm">${ref.summary || "<em class='text-gray-400'>No summary provided.</em>"}</p>
+    </div>
+  </div>
+`;
 
       list.appendChild(item);
     });
