@@ -302,7 +302,7 @@ def get_my_reflections(
     cur = conn.cursor()
     try:
         query = """
-            SELECT r.chapter_id, c.title, r.video_url, r.text_summary, r.submitted_at, r.obsolete
+            SELECT r.chapter_id, c.name, r.video_url, r.text_summary, r.submitted_at, r.obsolete
             FROM reflections r
             JOIN chapters c ON r.chapter_id = c.id
             WHERE r.user_id = %s AND r.obsolete = FALSE AND c.obsolete = FALSE
