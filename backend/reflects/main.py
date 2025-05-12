@@ -3,8 +3,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, constr, validator
 from typing import Optional, Literal
-from datetime import datetime
-from azure.storage.blob import BlobServiceClient
+from datetime import datetime, timedelta
+from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
 from passlib.context import CryptContext
 import os
 import re
@@ -108,7 +108,23 @@ def upload_to_azure(file, object_name: str):
 def get_sas_url(blob_name: str):
     blob_service_client = BlobServiceClient.from_connection_string(AZURE_CONN_STR)
     blob_client = blob_service_client.get_blob_client(container=AZURE_CONTAINER, blob=blob_name)
-    return blob_client.url
+
+    # Get the storage account key from an env variable
+    account_key = os.getenv("AZURE_STORAGE_ACCOUNT_KEY")
+    if not account_key:
+        raise RuntimeError("AZURE_STORAGE_ACCOUNT_KEY is not set in environment variables.")
+
+    sas_token = generate_blob_sas(
+        account_name=blob_client.account_name,
+        container_name=blob_client.container_name,
+        blob_name=blob_name,
+        account_key=account_key,
+        permission=BlobSasPermissions(read=True),
+        expiry=datetime.utcnow() + timedelta(hours=1)
+    )
+
+    return f"{blob_client.url}?{sas_token}"
+
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
