@@ -22,15 +22,23 @@
 <div class="bg-white p-8 rounded-xl shadow-md w-full max-w-md space-y-6">
   <h2 class="text-2xl font-bold text-gray-800 text-center">Submit Reflection</h2>
 
-  <form id="submit-form" class="space-y-4" enctype="multipart/form-data">
-    <select id="chapter-id" class="w-full p-3 border rounded-lg" required></select>
+  <div class="space-y-4">
+    <label for="subject-id" class="block text-sm font-medium text-gray-700">Select Subject</label>
+    <select id="subject-id" class="w-full p-3 border rounded-lg" required>
+      <option value="">-- Select Subject --</option>
+    </select>
+
+    <label for="chapter-id" class="block text-sm font-medium text-gray-700">Select Chapter</label>
+    <select id="chapter-id" class="w-full p-3 border rounded-lg" required>
+      <option value="">-- Select Chapter --</option>
+    </select>
 
     <input type="file" id="video-file" accept="video/*" class="w-full p-3 border rounded-lg" required />
 
     <textarea id="summary" rows="5" placeholder="Optional summary..." class="w-full p-3 border rounded-lg"></textarea>
 
-    <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">Submit</button>
-  </form>
+    <button id="submit-btn" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">Submit</button>
+  </div>
 
   <button onclick="logout()" class="w-full bg-red-500 text-white py-2 rounded-lg hover:bg-red-600">Logout</button>
 </div>
@@ -44,40 +52,44 @@
     window.location.href = "/";
   }
 
+  const subjectSelect = document.getElementById("subject-id");
   const chapterSelect = document.getElementById("chapter-id");
 
-  async function loadChapters() {
-    try {
-      const res = await fetch(`${API_BASE}/chapters`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      const chapters = await res.json();
-
-      if (chapters.length === 0) {
-        const opt = document.createElement("option");
-        opt.disabled = true;
-        opt.selected = true;
-        opt.textContent = "No chapters available";
-        chapterSelect.appendChild(opt);
-        return;
-      }
-
-      chapters.forEach(chap => {
-        const opt = document.createElement("option");
-        opt.value = chap.id;
-        opt.textContent = chap.obsolete ? `${chap.name} (Obsolete)` : chap.name;
-        if (chap.obsolete) opt.disabled = true;
-        chapterSelect.appendChild(opt);
-      });
-    } catch (err) {
-      alert("Failed to load chapters.");
-      console.error("Chapter load error:", err);
-    }
+  async function loadSubjects() {
+    const res = await fetch(`${API_BASE}/subjects`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const subjects = await res.json();
+    subjects.forEach(sub => {
+      const opt = document.createElement("option");
+      opt.value = sub.id;
+      opt.textContent = sub.name;
+      subjectSelect.appendChild(opt);
+    });
   }
 
-  document.getElementById("submit-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
+  async function loadChapters(subjectId) {
+    chapterSelect.innerHTML = `<option value="">-- Select Chapter --</option>`;
+    if (!subjectId) return;
 
+    const res = await fetch(`${API_BASE}/subjects/${subjectId}/chapters`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const chapters = await res.json();
+    chapters.forEach(chap => {
+      const opt = document.createElement("option");
+      opt.value = chap.id;
+      opt.textContent = chap.title;
+      chapterSelect.appendChild(opt);
+    });
+  }
+
+  subjectSelect.addEventListener("change", () => {
+    loadChapters(subjectSelect.value);
+  });
+
+  document.getElementById("submit-btn").addEventListener("click", async (e) => {
+    e.preventDefault();
     const formData = new FormData();
     formData.append("chapter_id", chapterSelect.value);
     formData.append("video_file", document.getElementById("video-file").files[0]);
@@ -85,9 +97,7 @@
 
     const res = await fetch(`${API_BASE}/submit-reflection`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
+      headers: { Authorization: `Bearer ${token}` },
       body: formData
     });
 
@@ -110,7 +120,7 @@
     }
   });
 
-  loadChapters();
+  loadSubjects();
 </script>
 </body>
 </html>
