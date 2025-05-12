@@ -11,8 +11,8 @@
 
   <!-- Navigation -->
   <div class="fixed top-4 left-4 space-x-2 z-50">
-    <a href="dashboard.html" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 shadow">Dashboard</a>
-    <button onclick="history.back()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 shadow">Back</button>
+    <a href="dashboard.html" class="bg-mauve-600 text-white px-4 py-2 rounded hover:bg-mauve-700 shadow">Dashboard</a>
+    <button onclick="history.back()" class="bg-onyx-500 text-white px-4 py-2 rounded hover:bg-onyx-600 shadow">Back</button>
   </div>
 
   <!-- Main Container -->
@@ -31,7 +31,7 @@
 
       <div id="add-subject-form" class="space-x-2 hidden">
         <input id="new-subject" placeholder="New Subject Name" class="px-4 py-2 border rounded w-64" />
-        <button onclick="addSubject()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Add Subject</button>
+        <button onclick="addSubject()" class="bg-mauve-600 text-white px-4 py-2 rounded hover:bg-mauve-700">Add Subject</button>
       </div>
 
       <ul id="subject-list" class="space-y-2"></ul>
@@ -108,7 +108,7 @@
         if (userRole === "teacher") {
           chapterSection.innerHTML += `
             <input id="new-chapter-${subject.id}" placeholder="New Chapter Name" class="px-2 py-1 border rounded w-64" />
-            <button onclick="addChapter(${subject.id})" class="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700">Add Chapter</button>`;
+            <button onclick="addChapter(${subject.id})" class="bg-mauve-600 text-white px-2 py-1 rounded hover:bg-mauve-700">Add Chapter</button>`;
         }
 
         const chapterList = document.createElement("ul");
