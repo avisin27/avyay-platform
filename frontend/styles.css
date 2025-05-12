@@ -35,3 +35,7 @@ background-color: rgba(136, 75, 65, 1);
 --tw-bg-opacity: 1;
 background-color: rgb(136 75 65 / var(--tw-bg-opacity, 1));
 }
+
+.max-w-xl60 {
+max-width: 67rem;
+}
