@@ -6,32 +6,46 @@
   <script src="config.js"></script>
   <title>Dashboard</title>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center">
-  <div class="bg-white p-8 rounded-xl shadow-md w-full max-w-md text-center space-y-6">
-    <h2 class="text-2xl font-bold text-gray-800">Welcome!</h2>
-    <p id="user-email" class="text-gray-600">Loading your info...</p>
+<body class="bg-gray-100 min-h-screen p-6">
+  <div class="fixed top-4 left-4 space-x-2 z-50">
+  <a href="dashboard.html" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 shadow">
+    Dashboard
+  </a>
+  <button onclick="history.back()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 shadow">
+    Back
+  </button>
+</div>
 
-    <div id="dashboard-links" class="space-y-4"></div>
+  <div class="max-w-5xl mx-auto space-y-8">
 
-    <!-- Password Edit Form -->
-    <form id="edit-form" class="space-y-4 mt-6 hidden text-left">
-      <label class="block text-sm text-gray-700">New Password</label>
-      <input type="password" id="new-password" class="w-full px-4 py-2 border rounded-lg" required />
+    <!-- Profile Section -->
+    <div class="bg-white p-6 rounded-xl shadow space-y-4">
+      <h2 class="text-2xl font-bold text-gray-800">Profile</h2>
+      <p id="user-name" class="text-gray-700">Name: </p>
+      <p id="user-email" class="text-gray-700">Email: </p>
 
-      <label class="block text-sm text-gray-700">Confirm Password</label>
-      <input type="password" id="confirm-password" class="w-full px-4 py-2 border rounded-lg" required />
+      <button onclick="toggleEditForm()" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">Edit Password</button>
+      <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Logout</button>
 
-      <button type="submit" class="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700">
-        Save New Password
-      </button>
-    </form>
+      <!-- Password Edit Form -->
+      <form id="edit-form" class="space-y-4 mt-4 hidden">
+        <label class="block text-sm text-gray-700">New Password</label>
+        <input type="password" id="new-password" class="w-full px-4 py-2 border rounded" required />
+
+        <label class="block text-sm text-gray-700">Confirm Password</label>
+        <input type="password" id="confirm-password" class="w-full px-4 py-2 border rounded" required />
+
+        <button type="submit" class="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700">Save Password</button>
+      </form>
+    </div>
+
+    <!-- Dashboard Features -->
+    <div id="dashboard-links" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
   </div>
 
   <script>
     const token = localStorage.getItem("token");
-    if (!token) {
-      window.location.href = "login.html";
-    }
+    if (!token) window.location.href = "login.html";
 
     function logout() {
       localStorage.removeItem("token");
@@ -44,7 +58,6 @@
 
     document.getElementById("edit-form").addEventListener("submit", async (e) => {
       e.preventDefault();
-
       const newPassword = document.getElementById("new-password").value;
       const confirmPassword = document.getElementById("confirm-password").value;
 
@@ -73,7 +86,6 @@
           alert(data.detail || "Failed to update.");
         }
       } catch (err) {
-        console.error("Unexpected response:", text);
         alert("Something went wrong.");
       }
     });
@@ -90,7 +102,8 @@
       }
 
       const user = await res.json();
-      document.getElementById("user-email").textContent = `Logged in as: ${user.email}`;
+      document.getElementById("user-name").textContent = `Name: ${user.name}`;
+      document.getElementById("user-email").textContent = `Email: ${user.email}`;
       renderDashboard(user.role);
     }
 
@@ -98,23 +111,20 @@
       const container = document.getElementById("dashboard-links");
       container.innerHTML = "";
 
+      const button = (label, href, color = "blue") => `
+        <a href="${href}" class="block bg-${color}-600 text-white px-4 py-3 rounded-lg text-center hover:bg-${color}-700">
+          ${label}
+        </a>`;
+
       if (role === "student") {
-        container.innerHTML += `
-          <a href="submit.html" class="block w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">Submit Reflection</a>
-          <a href="my-reflections.html" class="block w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700">View My Submissions</a>
-        `;
+        container.innerHTML += button("Curriculum", "curriculum.html", "indigo");
+        container.innerHTML += button("My Reflections", "my-reflections.html", "purple");
+        container.innerHTML += button("Submit New Reflection", "submit.html", "green");
+      } else if (role === "teacher") {
+        container.innerHTML += button("My Students", "students.html");
+        container.innerHTML += button("Curriculum", "curriculum.html", "yellow");
+        container.innerHTML += button("All Reflections", "teacher-refs.html", "red");
       }
-
-      if (role === "teacher") {
-        container.innerHTML += `
-          <a href="teacher-refs.html" class="block w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">View All Reflections</a>
-        `;
-      }
-
-      container.innerHTML += `
-        <button onclick="toggleEditForm()" class="block w-full bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600">Edit Password</button>
-        <button onclick="logout()" class="block w-full bg-red-500 text-white py-2 rounded-lg hover:bg-red-600">Logout</button>
-      `;
     }
 
     fetchUser();

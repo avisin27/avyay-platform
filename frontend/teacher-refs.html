@@ -7,10 +7,15 @@
   <script src="config.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen p-6">
+  <div class="fixed top-4 left-4 space-x-2 z-50">
+    <a href="dashboard.html" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 shadow">Dashboard</a>
+    <button onclick="history.back()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 shadow">Back</button>
+  </div>
+
   <div class="max-w-5xl mx-auto bg-white p-6 rounded-xl shadow space-y-6">
     <h1 class="text-2xl font-bold text-center">Teacher Dashboard – All Reflections</h1>
 
-    <!-- Filter Form -->
+    <!-- Filters -->
     <form id="filter-form" class="flex flex-wrap gap-4 justify-center">
       <select id="email-filter" class="px-4 py-2 border rounded-lg">
         <option value="">All Students</option>
@@ -18,12 +23,10 @@
       <select id="chapter-filter" class="px-4 py-2 border rounded-lg">
         <option value="">All Chapters</option>
       </select>
-      <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
-        Filter
-      </button>
+      <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">Filter</button>
     </form>
 
-    <!-- Reflection List -->
+    <!-- Results -->
     <div id="reflection-list" class="space-y-6"></div>
   </div>
 
@@ -112,37 +115,42 @@
         const card = document.createElement("div");
         card.className = "p-6 border rounded-xl bg-gray-50 space-y-2";
 
+        const isObsolete = ref.obsolete;
+        const chapterName = chapterMap[ref.chapter_id] || `Chapter ${ref.chapter_id}`;
+        const chapterLabel = isObsolete
+          ? `<span class="line-through text-gray-400">${chapterName}</span> <span class="text-red-500 text-sm">(Obsolete)</span>`
+          : chapterName;
+
         const safeVideoURL = ref.video_url?.startsWith("http")
-  ? ref.video_url
-  : `${API_BASE}${ref.video_url || ""}`;
+          ? ref.video_url
+          : `${API_BASE}${ref.video_url || ""}`;
 
-card.innerHTML = `
-  <div class="font-bold text-blue-800">Student: ${ref.email}</div>
-  <div class="text-sm text-gray-600">Chapter: ${chapterMap[ref.chapter_id] || "Chapter " + ref.chapter_id}</div>
-  <div class="mt-2">
-    ${
-      safeVideoURL
-        ? `<video controls class="w-full rounded-lg">
-             <source src="${safeVideoURL}" type="video/mp4">
-             Your browser does not support the video tag.
-           </video>`
-        : `<p class="text-red-500">No video available.</p>`
-    }
-  </div>
-  <p class="text-gray-800 mt-2">${ref.text_summary || "(No summary)"}</p>
-  <div class="text-xs text-gray-400">Submitted: ${new Date(ref.submitted_at).toLocaleString()}</div>
+        card.innerHTML = `
+          <div class="font-bold text-blue-800">Student: ${ref.email}</div>
+          <div class="text-sm text-gray-600">Chapter: ${chapterLabel}</div>
+          <div class="mt-2">
+            ${
+              safeVideoURL
+                ? `<video controls class="w-full rounded-lg">
+                     <source src="${safeVideoURL}" type="video/mp4">
+                     Your browser does not support the video tag.
+                   </video>`
+                : `<p class="text-red-500">No video available.</p>`
+            }
+          </div>
+          <p class="text-gray-800 mt-2">${ref.text_summary || "(No summary)"}</p>
+          <div class="text-xs text-gray-400">Submitted: ${new Date(ref.submitted_at).toLocaleString()}</div>
 
-  <form class="feedback-form space-y-2 mt-4">
-    <label class="block text-sm font-medium text-gray-700">Feedback</label>
-    <select class="status w-full border px-3 py-2 rounded-lg">
-      <option value="understood" ${ref.status === "understood" ? "selected" : ""}>Understood</option>
-      <option value="needs_review" ${ref.status === "needs_review" ? "selected" : ""}>Needs Review</option>
-    </select>
-    <textarea class="comment w-full border px-3 py-2 rounded-lg" rows="2" placeholder="Comment (optional)">${ref.comment || ""}</textarea>
-    <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Submit Feedback</button>
-  </form>
-`;
-
+          <form class="feedback-form space-y-2 mt-4">
+            <label class="block text-sm font-medium text-gray-700">Feedback</label>
+            <select class="status w-full border px-3 py-2 rounded-lg">
+              <option value="understood" ${ref.status === "understood" ? "selected" : ""}>Understood</option>
+              <option value="needs_review" ${ref.status === "needs_review" ? "selected" : ""}>Needs Review</option>
+            </select>
+            <textarea class="comment w-full border px-3 py-2 rounded-lg" rows="2" placeholder="Comment (optional)">${ref.comment || ""}</textarea>
+            <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Submit Feedback</button>
+          </form>
+        `;
 
         const form = card.querySelector(".feedback-form");
         const commentInput = form.querySelector(".comment");
@@ -154,8 +162,8 @@ card.innerHTML = `
 
         form.addEventListener("submit", async (e) => {
           e.preventDefault();
-          const status = statusSelect?.value;
-          const comment = commentInput?.value;
+          const status = statusSelect.value;
+          const comment = commentInput.value;
 
           const fbRes = await fetch(`${API_BASE}/teacher/feedback`, {
             method: "POST",

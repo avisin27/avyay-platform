@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="config.js"></script>
+  <title>Curriculum</title>
+</head>
+<body class="bg-gray-100 min-h-screen p-6">
+
+  <!-- Navigation -->
+  <div class="fixed top-4 left-4 space-x-2 z-50">
+    <a href="dashboard.html" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 shadow">
+      Dashboard
+    </a>
+    <button onclick="history.back()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 shadow">
+      Back
+    </button>
+  </div>
+
+  <!-- Main Container -->
+  <div class="max-w-5xl mx-auto space-y-8">
+
+    <!-- Subject Section -->
+    <div class="bg-white p-6 rounded-xl shadow space-y-4">
+      <h2 class="text-2xl font-bold text-gray-800">Subjects</h2>
+
+      <div id="add-subject-form" class="hidden space-x-2">
+        <input id="new-subject" placeholder="New Subject Name" class="px-4 py-2 border rounded w-64" />
+        <button onclick="addSubject()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Add Subject</button>
+      </div>
+
+      <ul id="subject-list" class="space-y-2"></ul>
+    </div>
+
+    <!-- Chapter Section -->
+    <div class="bg-white p-6 rounded-xl shadow space-y-4">
+      <h2 class="text-2xl font-bold text-gray-800">Chapters</h2>
+
+      <div id="add-chapter-form" class="hidden space-x-2">
+        <input id="new-chapter" placeholder="New Chapter Title" class="px-4 py-2 border rounded w-64" />
+        <button onclick="addChapter()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Add Chapter</button>
+      </div>
+
+      <ul id="chapter-list" class="space-y-2"></ul>
+    </div>
+
+  </div>
+
+  <script>
+    const token = localStorage.getItem("token");
+    if (!token) window.location.href = "login.html";
+
+    let userRole = null;
+    let currentSubjectId = null;
+    let currentSubjectObsolete = false;
+
+    async function fetchUser() {
+      const res = await fetch(`${API_BASE}/me`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      if (!res.ok) {
+        localStorage.removeItem("token");
+        window.location.href = "/";
+        return;
+      }
+
+      const user = await res.json();
+      userRole = user.role;
+      if (userRole === "teacher") {
+        document.getElementById("add-subject-form").classList.remove("hidden");
+      }
+
+      fetchSubjects();
+    }
+
+    async function fetchSubjects() {
+      const res = await fetch(`${API_BASE}/subjects`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      const subjects = await res.json();
+      const container = document.getElementById("subject-list");
+      container.innerHTML = "";
+
+      subjects.forEach(subject => {
+        const li = document.createElement("li");
+        li.className = "flex items-center justify-between bg-gray-100 p-2 rounded";
+
+        const label = subject.obsolete ? '<span class="text-red-500 text-sm ml-2">(Obsolete)</span>' : '';
+        const lineClass = subject.obsolete ? 'text-gray-400 line-through' : '';
+
+        li.innerHTML = `
+          <span class="cursor-pointer font-medium ${lineClass}" 
+                onclick="selectSubject(${subject.id}, '${subject.name}', ${subject.obsolete})">
+            ${subject.name} ${label}
+          </span>
+          ${userRole === 'teacher' && !subject.obsolete ? `
+            <div class="space-x-2">
+              <button onclick="editSubject(${subject.id}, '${subject.name}')" class="text-yellow-600 hover:underline">Edit</button>
+              <button onclick="deleteSubject(${subject.id})" class="text-red-600 hover:underline">Delete</button>
+            </div>` : ''}
+        `;
+        container.appendChild(li);
+      });
+    }
+
+    function selectSubject(id, name, isObsolete) {
+      currentSubjectId = id;
+      currentSubjectObsolete = isObsolete;
+
+      const addForm = document.getElementById("add-chapter-form");
+      if (userRole === "teacher" && !isObsolete) {
+        addForm.classList.remove("hidden");
+      } else {
+        addForm.classList.add("hidden");
+      }
+
+      fetchChapters(id);
+    }
+
+    async function fetchChapters(subjectId) {
+      const res = await fetch(`${API_BASE}/subjects/${subjectId}/chapters`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      const chapters = await res.json();
+      const container = document.getElementById("chapter-list");
+      container.innerHTML = "";
+
+      chapters.forEach(chapter => {
+        const isObsolete = chapter.obsolete;
+        const label = isObsolete ? '<span class="text-red-500 text-sm ml-2">(Obsolete)</span>' : '';
+        const lineClass = isObsolete ? 'text-gray-400 line-through' : '';
+
+        const li = document.createElement("li");
+        li.className = "flex items-center justify-between bg-gray-50 p-2 rounded";
+
+        li.innerHTML = `
+          <span class="${lineClass}">${chapter.title} ${label}</span>
+          ${userRole === 'teacher' && !isObsolete ? `
+            <div class="space-x-2">
+              <button onclick="editChapter(${chapter.id}, '${chapter.title}')" class="text-yellow-600 hover:underline">Edit</button>
+              <button onclick="deleteChapter(${chapter.id})" class="text-red-600 hover:underline">Delete</button>
+            </div>` : ''}
+        `;
+        container.appendChild(li);
+      });
+    }
+
+    async function addSubject() {
+      const name = document.getElementById("new-subject").value.trim();
+      if (!name) return alert("Enter a subject name");
+
+      const res = await fetch(`${API_BASE}/subjects`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ name })
+      });
+
+      if (res.ok) {
+        document.getElementById("new-subject").value = "";
+        fetchSubjects();
+      } else {
+        alert("Failed to add subject");
+      }
+    }
+
+    async function deleteSubject(id) {
+      if (!confirm("Delete this subject?")) return;
+      await fetch(`${API_BASE}/subjects/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      fetchSubjects();
+      document.getElementById("chapter-list").innerHTML = "";
+    }
+
+    async function editSubject(id, currentName) {
+      const newName = prompt("Edit subject name:", currentName);
+      if (!newName || newName === currentName) return;
+
+      await fetch(`${API_BASE}/subjects/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ name: newName })
+      });
+      fetchSubjects();
+    }
+
+    async function addChapter() {
+      const title = document.getElementById("new-chapter").value.trim();
+      if (!title) return alert("Enter a chapter title");
+      if (!currentSubjectId) return alert("Select a subject first");
+
+      await fetch(`${API_BASE}/subjects/${currentSubjectId}/chapters`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ title })
+      });
+
+      document.getElementById("new-chapter").value = "";
+      fetchChapters(currentSubjectId);
+    }
+
+    async function deleteChapter(id) {
+      if (!confirm("Delete this chapter?")) return;
+      await fetch(`${API_BASE}/chapters/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      fetchChapters(currentSubjectId);
+    }
+
+    async function editChapter(id, currentTitle) {
+      const newTitle = prompt("Edit chapter title:", currentTitle);
+      if (!newTitle || newTitle === currentTitle) return;
+
+      await fetch(`${API_BASE}/chapters/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ title: newTitle })
+      });
+
+      fetchChapters(currentSubjectId);
+    }
+
+    fetchUser();
+  </script>
+</body>
+</html>

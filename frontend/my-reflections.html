@@ -7,61 +7,107 @@
   <title>My Reflections</title>
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center">
+<div class="fixed top-4 left-4 space-x-2 z-50">
+  <a href="dashboard.html" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 shadow">
+    Dashboard
+  </a>
+  <button onclick="history.back()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 shadow">
+    Back
+  </button>
+</div>
 
-  <div class="bg-white p-8 rounded-xl shadow-md w-full max-w-xl space-y-6">
-    <h2 class="text-2xl font-bold text-gray-800 text-center">My Reflections</h2>
-    <ul id="reflections-list" class="space-y-4"></ul>
-    <button onclick="logout()" class="w-full bg-red-500 text-white py-2 rounded-lg hover:bg-red-600">Logout</button>
+<div class="bg-white p-8 rounded-xl shadow-md w-full max-w-xl space-y-6">
+  <h2 class="text-2xl font-bold text-gray-800 text-center">My Reflections</h2>
+
+  <div class="mb-4">
+    <label for="subject-filter" class="block mb-1 text-sm font-medium text-gray-700">Filter by Subject</label>
+    <select id="subject-filter" class="w-full border p-2 rounded">
+      <option value="">All Subjects</option>
+    </select>
   </div>
 
-  
+  <ul id="reflections-list" class="space-y-4"></ul>
+  <button onclick="logout()" class="w-full bg-red-500 text-white py-2 rounded-lg hover:bg-red-600">Logout</button>
+</div>
 
-  <script>
-    const token = localStorage.getItem("token");
-    if (!token) window.location.href = "/";
+<script>
+  const token = localStorage.getItem("token");
+  if (!token) window.location.href = "/";
 
-    function logout() {
-      localStorage.removeItem("token");
-      window.location.href = "/";
-    }
-
-async function fetchReflections() {
-  const res = await fetch(`${API_BASE}/my-reflections`, {
-    headers: {
-      "Authorization": `Bearer ${token}`
-    }
-  });
-
-  if (!res.ok) {
-    alert("Failed to load reflections");
-    return;
+  function logout() {
+    localStorage.removeItem("token");
+    window.location.href = "/";
   }
 
-  const data = await res.json();
-  const list = document.getElementById("reflections-list");
+  const subjectFilter = document.getElementById("subject-filter");
+  subjectFilter.addEventListener("change", () => {
+    fetchReflections(subjectFilter.value);
+  });
 
-  if (data.length === 0) {
-    list.innerHTML = `<li class="text-gray-500 text-center">No reflections yet.</li>`;
-  } else {
+  async function fetchSubjects() {
+    const res = await fetch(`${API_BASE}/subjects`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    const subjects = await res.json();
+    subjects.forEach(sub => {
+      const opt = document.createElement("option");
+      opt.value = sub.id;
+      opt.textContent = sub.name;
+      subjectFilter.appendChild(opt);
+    });
+  }
+
+  async function fetchReflections(subjectId = "") {
+    let url = `${API_BASE}/my-reflections`;
+    if (subjectId) url += `?subject_id=${subjectId}`;
+
+    const res = await fetch(url, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    if (!res.ok) {
+      alert("Failed to load reflections");
+      return;
+    }
+
+    const data = await res.json();
+    const list = document.getElementById("reflections-list");
+
+    if (data.length === 0) {
+      list.innerHTML = `<li class="text-gray-500 text-center">No reflections yet.</li>`;
+      return;
+    }
+
     list.innerHTML = "";
+
     data.forEach((ref) => {
       const videoSrc = ref.video_url.startsWith("http") ? ref.video_url : `${API_BASE}${ref.video_url}`;
+      const isObsolete = ref.obsolete;
+      const chapterTitle = isObsolete
+        ? `<span class="line-through text-gray-400">${ref.chapter}</span> <span class="text-red-500 text-sm">(Obsolete)</span>`
+        : ref.chapter;
+
       const item = document.createElement("li");
       item.className = "p-4 border rounded-lg text-left bg-gray-50";
+
       item.innerHTML = `
-        <h3 class="font-semibold text-lg">${ref.chapter}</h3>
+        <h3 class="font-semibold text-lg">${chapterTitle}</h3>
         <p class="text-sm text-gray-500 mb-1">${new Date(ref.submitted_at).toLocaleString()}</p>
-        <video controls class="w-full mb-2">
-          <source src="${videoSrc}" type="video/mp4">
-          Your browser does not support video playback.
-        </video>
-        <p class="text-gray-700">${ref.summary || "No summary provided."}</p>
+        ${ref.video_url ? `
+          <video controls class="w-full mb-2">
+            <source src="${videoSrc}" type="video/mp4">
+            Your browser does not support video playback.
+          </video>` : `<p class="text-red-500 text-sm">No video uploaded.</p>`}
+        <p class="text-gray-700">${ref.summary || "<em class='text-gray-400'>No summary provided.</em>"}</p>
       `;
+
       list.appendChild(item);
     });
   }
-}
-    fetchReflections();
-  </script>
+
+  // Initialize
+  fetchSubjects().then(() => fetchReflections());
+</script>
 </body>
 </html>

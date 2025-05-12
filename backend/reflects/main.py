@@ -53,6 +53,18 @@ class FeedbackCreate(BaseModel):
     status: Literal['understood', 'needs_review']
     comment: Optional[constr(max_length=500)]
 
+class SubjectCreate(BaseModel):
+    name: constr(min_length=1, max_length=100)
+
+class SubjectUpdate(BaseModel):
+    name: constr(min_length=1, max_length=100)
+
+class ChapterCreate(BaseModel):
+    title: constr(min_length=1, max_length=100)
+
+class ChapterUpdate(BaseModel):
+    title: constr(min_length=1, max_length=100)
+
 # ----- Environment Config -----
 ENV = os.getenv("ENV", "local")
 AZURE_CONTAINER = os.getenv("AZURE_STORAGE_CONTAINER_NAME", "uploads")
@@ -195,37 +207,204 @@ def submit_reflection(
         conn.close()
 
 @app.get("/my-reflections")
-def get_my_reflections(user=Depends(get_current_user)):
+def get_my_reflections(
+    subject_id: Optional[int] = Query(None),
+    user=Depends(get_current_user)
+):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute("""
-            SELECT r.chapter_id, c.name, r.video_url, r.text_summary, r.submitted_at
+        query = """
+            SELECT r.chapter_id, c.title, r.video_url, r.text_summary, r.submitted_at, r.obsolete
             FROM reflections r
             JOIN chapters c ON r.chapter_id = c.id
-            WHERE r.user_id = %s
-            ORDER BY r.submitted_at DESC
-        """, (user["user_id"],))
+            WHERE r.user_id = %s AND r.obsolete = FALSE AND c.obsolete = FALSE
+        """
+        params = [user["user_id"]]
+
+        if subject_id:
+            query += " AND c.subject_id = %s"
+            params.append(subject_id)
+
+        query += " ORDER BY r.submitted_at DESC"
+        cur.execute(query, tuple(params))
+
         return [{
             "chapter": row[1],
             "video_url": get_sas_url(row[2]),
             "summary": row[3],
-            "submitted_at": row[4].isoformat()
+            "submitted_at": row[4].isoformat(),
+            "obsolete": row[5]
         } for row in cur.fetchall()]
     finally:
         cur.close()
         conn.close()
+
 
 @app.get("/chapters")
 def get_chapters():
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute("SELECT id, name FROM chapters ORDER BY id")
+        cur.execute("SELECT id, name FROM chapters WHERE obsolete = FALSE ORDER BY id")
         return [{"id": row[0], "name": row[1]} for row in cur.fetchall()]
     finally:
         cur.close()
         conn.close()
+
+
+@app.get("/subjects")
+def get_subjects(user=Depends(get_current_user)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id, name FROM subjects WHERE obsolete = FALSE ORDER BY name")
+        return [{"id": row[0], "name": row[1]} for row in cur.fetchall()]
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.post("/subjects")
+def create_subject(subject: SubjectCreate, user=Depends(get_current_user)):
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can create subjects")
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("INSERT INTO subjects (name) VALUES (%s) RETURNING id", (subject.name.strip(),))
+        conn.commit()
+        return {"id": cur.fetchone()[0], "name": subject.name}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.patch("/subjects/{subject_id}")
+def update_subject(subject_id: int, updates: SubjectUpdate, user=Depends(get_current_user)):
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can update subjects")
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("UPDATE subjects SET name = %s WHERE id = %s", (updates.name.strip(), subject_id))
+        conn.commit()
+        return {"message": "Subject updated"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.delete("/subjects/{subject_id}")
+def delete_subject(subject_id: int, user=Depends(get_current_user)):
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can delete subjects")
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("UPDATE subjects SET obsolete = TRUE WHERE id = %s", (subject_id,))
+        cur.execute("UPDATE chapters SET obsolete = TRUE WHERE subject_id = %s", (subject_id,))
+        cur.execute("""
+            UPDATE reflections SET obsolete = TRUE 
+            WHERE chapter_id IN (SELECT id FROM chapters WHERE subject_id = %s)
+        """, (subject_id,))
+        cur.execute("""
+            UPDATE feedback SET obsolete = TRUE
+            WHERE reflection_id IN (
+                SELECT r.id FROM reflections r
+                JOIN chapters c ON r.chapter_id = c.id
+                WHERE c.subject_id = %s
+            )
+        """, (subject_id,))
+        conn.commit()
+        return {"message": "Subject marked as obsolete"}
+    finally:
+        cur.close()
+        conn.close()
+
+
+
+@app.get("/subjects/{subject_id}/chapters")
+def get_chapters_for_subject(subject_id: int, user=Depends(get_current_user)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id, title FROM chapters WHERE subject_id = %s AND obsolete = FALSE ORDER BY id", (subject_id,))
+        return [{"id": row[0], "title": row[1]} for row in cur.fetchall()]
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.post("/subjects/{subject_id}/chapters")
+def create_chapter(subject_id: int, chapter: ChapterCreate, user=Depends(get_current_user)):
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can create chapters")
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "INSERT INTO chapters (subject_id, title) VALUES (%s, %s) RETURNING id",
+            (subject_id, chapter.title.strip())
+        )
+        conn.commit()
+        return {"id": cur.fetchone()[0], "title": chapter.title}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.patch("/chapters/{chapter_id}")
+def update_chapter(chapter_id: int, updates: ChapterUpdate, user=Depends(get_current_user)):
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can update chapters")
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("UPDATE chapters SET title = %s WHERE id = %s", (updates.title.strip(), chapter_id))
+        conn.commit()
+        return {"message": "Chapter updated"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.delete("/chapters/{chapter_id}")
+def delete_chapter(chapter_id: int, user=Depends(get_current_user)):
+    if user["role"] != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can delete chapters")
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("UPDATE chapters SET obsolete = TRUE WHERE id = %s", (chapter_id,))
+        cur.execute("UPDATE reflections SET obsolete = TRUE WHERE chapter_id = %s", (chapter_id,))
+        cur.execute("""
+            UPDATE feedback SET obsolete = TRUE 
+            WHERE reflection_id IN (
+                SELECT id FROM reflections WHERE chapter_id = %s
+            )
+        """, (chapter_id,))
+        conn.commit()
+        return {"message": "Chapter marked as obsolete"}
+    finally:
+        cur.close()
+        conn.close()
+
+        
 
 @app.get("/students/emails")
 def get_student_emails(user=Depends(get_current_user)):
@@ -251,7 +430,8 @@ def get_all_reflections(subject: Optional[str] = Query(None), email: Optional[st
         FROM reflections r
         JOIN users u ON r.user_id = u.id
         LEFT JOIN feedback f ON r.id = f.reflection_id
-        WHERE 1=1
+        JOIN chapters c ON r.chapter_id = c.id
+        WHERE r.obsolete = FALSE AND c.obsolete = FALSE AND f.obsolete = FALSE
     """
     params = []
     if subject:
@@ -310,7 +490,8 @@ def get_teacher_feedback(
         FROM feedback f
         JOIN reflections r ON f.reflection_id = r.id
         JOIN users u ON r.user_id = u.id
-        WHERE f.teacher_id = %s
+        JOIN chapters c ON r.chapter_id = c.id
+        WHERE f.teacher_id = %s AND f.obsolete = FALSE AND r.obsolete = FALSE AND c.obsolete = FALSE
     """
     params = [user["user_id"]]
 
