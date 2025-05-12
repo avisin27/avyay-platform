@@ -18,6 +18,14 @@
 
 <div class="bg-white p-8 rounded-xl shadow-md w-full max-w-xl space-y-6">
   <h2 class="text-2xl font-bold text-gray-800 text-center">My Reflections</h2>
+
+  <div class="mb-4">
+    <label for="subject-filter" class="block mb-1 text-sm font-medium text-gray-700">Filter by Subject</label>
+    <select id="subject-filter" class="w-full border p-2 rounded">
+      <option value="">All Subjects</option>
+    </select>
+  </div>
+
   <ul id="reflections-list" class="space-y-4"></ul>
   <button onclick="logout()" class="w-full bg-red-500 text-white py-2 rounded-lg hover:bg-red-600">Logout</button>
 </div>
@@ -31,8 +39,30 @@
     window.location.href = "/";
   }
 
-  async function fetchReflections() {
-    const res = await fetch(`${API_BASE}/my-reflections`, {
+  const subjectFilter = document.getElementById("subject-filter");
+  subjectFilter.addEventListener("change", () => {
+    fetchReflections(subjectFilter.value);
+  });
+
+  async function fetchSubjects() {
+    const res = await fetch(`${API_BASE}/subjects`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    const subjects = await res.json();
+    subjects.forEach(sub => {
+      const opt = document.createElement("option");
+      opt.value = sub.id;
+      opt.textContent = sub.name;
+      subjectFilter.appendChild(opt);
+    });
+  }
+
+  async function fetchReflections(subjectId = "") {
+    let url = `${API_BASE}/my-reflections`;
+    if (subjectId) url += `?subject_id=${subjectId}`;
+
+    const res = await fetch(url, {
       headers: { "Authorization": `Bearer ${token}` }
     });
 
@@ -76,7 +106,8 @@
     });
   }
 
-  fetchReflections();
+  // Initialize
+  fetchSubjects().then(() => fetchReflections());
 </script>
 </body>
 </html>
