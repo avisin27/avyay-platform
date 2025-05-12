@@ -23,8 +23,7 @@
                class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
 
         <select name="role"
-                class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="student">Student</option>
+                class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" disabled>
           <option value="teacher">Teacher</option>
         </select>
 
@@ -46,7 +45,6 @@
 
   <script>
     const API_BASE = "/api";
-    console.log("API_BASE is:", API_BASE);
     const formTitle = document.getElementById("form-title");
     const submitText = document.getElementById("submit-text");
     const toggleText = document.getElementById("toggle-text");
@@ -63,18 +61,15 @@
       toggleButton.textContent = isLogin ? "Sign up" : "Login";
       signupFields.classList.toggle("hidden", isLogin);
 
-      // Toggle `required` attributes for signup-only fields
+      // Manage required fields
       const nameField = document.querySelector("input[name='name']");
-      const roleField = document.querySelector("select[name='role']");
       const confirmField = document.querySelector("input[name='confirm_password']");
 
       if (isLogin) {
         nameField.removeAttribute("required");
-        roleField.removeAttribute("required");
         confirmField.removeAttribute("required");
       } else {
         nameField.setAttribute("required", "required");
-        roleField.setAttribute("required", "required");
         confirmField.setAttribute("required", "required");
       }
     });
@@ -83,12 +78,23 @@
       e.preventDefault();
 
       const form = e.target;
-      const email = form.email.value;
+      const email = form.email.value.trim();
       const password = form.password.value;
 
+      // Basic email validation
+      if (!/^\S+@\S+\.\S+$/.test(email)) {
+        alert("Please enter a valid email address.");
+        return;
+      }
+
+      if (password.length < 6) {
+        alert("Password must be at least 6 characters.");
+        return;
+      }
+
       if (!isLogin) {
-        const name = form.name.value;
-        const role = form.role.value;
+        const name = form.name.value.trim();
+        const role = "teacher"; // 🔒 force teacher role
         const confirm = form.confirm_password.value;
 
         if (password !== confirm) {
@@ -114,33 +120,28 @@
         formData.append("username", email);
         formData.append("password", password);
 
-      const res = await fetch(`${API_BASE}/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: formData
-      });
-
-      if (res.ok) {
-        const data = await res.json(); // ✅ move this after res.ok
-        localStorage.setItem("token", data.access_token);
-        alert("Login successful!");
-
-        // Get user role
-        const userRes = await fetch(`${API_BASE}/me`, {
-          headers: { Authorization: `Bearer ${data.access_token}` }
+        const res = await fetch(`${API_BASE}/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: formData
         });
-        const userInfo = await userRes.json();
 
-        if (userInfo.role === "teacher") {
-          window.location.href = "dashboard.html";
+        if (res.ok) {
+          const data = await res.json();
+          localStorage.setItem("token", data.access_token);
+          alert("Login successful!");
+
+          // Fetch user role
+          const userRes = await fetch(`${API_BASE}/me`, {
+            headers: { Authorization: `Bearer ${data.access_token}` }
+          });
+          const userInfo = await userRes.json();
+
+          window.location.href = "dashboard.html"; // you can redirect based on userInfo.role
         } else {
-          window.location.href = "dashboard.html";
+          const errorData = await res.json().catch(() => ({}));
+          alert(errorData.detail || "Login failed.");
         }
-
-      } else {
-        const errorData = await res.json().catch(() => ({}));
-        alert(errorData.detail || "Login failed.");
-      }
       }
     });
   </script>
