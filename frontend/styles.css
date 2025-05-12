@@ -7,11 +7,11 @@ background-color: rgba(127, 94, 125, 1);
 color: rgb(127 94 125 / var(--tw-text-opacity, 1));
 }
 
-.hover\:bg-blue-700:hover {
+.hover\:bg-mauve-700:hover {
 --tw-bg-opacity: 1;
 background-color: rgb(127 94 125 / var(--tw-bg-opacity, 1));
 }
-.bg-gray-500 {
+.bg-onyx-500 {
 --tw-bg-opacity: 1;
 background-color: rgba(0, 0, 0, 1);
 }
