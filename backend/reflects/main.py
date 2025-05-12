@@ -292,18 +292,30 @@ def update_subject(subject_id: int, updates: SubjectUpdate, user=Depends(get_cur
 def delete_subject(subject_id: int, user=Depends(get_current_user)):
     if user["role"] != "teacher":
         raise HTTPException(status_code=403, detail="Only teachers can delete subjects")
+
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute("DELETE FROM subjects WHERE id = %s", (subject_id,))
+        cur.execute("UPDATE subjects SET obsolete = TRUE WHERE id = %s", (subject_id,))
+        cur.execute("UPDATE chapters SET obsolete = TRUE WHERE subject_id = %s", (subject_id,))
+        cur.execute("""
+            UPDATE reflections SET obsolete = TRUE 
+            WHERE chapter_id IN (SELECT id FROM chapters WHERE subject_id = %s)
+        """, (subject_id,))
+        cur.execute("""
+            UPDATE feedback SET obsolete = TRUE
+            WHERE reflection_id IN (
+                SELECT r.id FROM reflections r
+                JOIN chapters c ON r.chapter_id = c.id
+                WHERE c.subject_id = %s
+            )
+        """, (subject_id,))
         conn.commit()
-        return {"message": "Subject deleted"}
-    except Exception as e:
-        conn.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        return {"message": "Subject marked as obsolete"}
     finally:
         cur.close()
         conn.close()
+
 
 
 @app.get("/subjects/{subject_id}/chapters")
@@ -361,18 +373,24 @@ def update_chapter(chapter_id: int, updates: ChapterUpdate, user=Depends(get_cur
 def delete_chapter(chapter_id: int, user=Depends(get_current_user)):
     if user["role"] != "teacher":
         raise HTTPException(status_code=403, detail="Only teachers can delete chapters")
+
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute("DELETE FROM chapters WHERE id = %s", (chapter_id,))
+        cur.execute("UPDATE chapters SET obsolete = TRUE WHERE id = %s", (chapter_id,))
+        cur.execute("UPDATE reflections SET obsolete = TRUE WHERE chapter_id = %s", (chapter_id,))
+        cur.execute("""
+            UPDATE feedback SET obsolete = TRUE 
+            WHERE reflection_id IN (
+                SELECT id FROM reflections WHERE chapter_id = %s
+            )
+        """, (chapter_id,))
         conn.commit()
-        return {"message": "Chapter deleted"}
-    except Exception as e:
-        conn.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        return {"message": "Chapter marked as obsolete"}
     finally:
         cur.close()
         conn.close()
+
         
 
 @app.get("/students/emails")
