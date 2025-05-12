@@ -108,14 +108,12 @@
         </a>`;
 
       if (role === "student") {
-        container.innerHTML += button("My Chapters", "my-chapters.html");
-        container.innerHTML += button("My Subjects", "my-subjects.html", "indigo");
+        container.innerHTML += button("Curriculum", "curriculum.html", "indigo");
         container.innerHTML += button("My Reflections", "my-reflections.html", "purple");
         container.innerHTML += button("Submit New Reflection", "submit.html", "green");
       } else if (role === "teacher") {
         container.innerHTML += button("My Students", "students.html");
-        container.innerHTML += button("My Subjects", "my-subjects.html", "indigo");
-        container.innerHTML += button("Subject-wise Chapters", "subject-chapters.html", "yellow");
+        container.innerHTML += button("Curriculum", "curriculum.html", "yellow");
         container.innerHTML += button("All Reflections", "teacher-refs.html", "red");
       }
     }
