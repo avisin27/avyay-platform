@@ -9,13 +9,10 @@
 </head>
 <body class="bg-cover bg-center min-h-screen flex items-center justify-center"
       style="background-image: url('/images/myref.jpeg');">
+
 <div class="fixed top-4 left-4 space-x-2 z-50">
-  <a href="dashboard.html" class="bg-mauve-600 text-white px-4 py-2 rounded hover:bg-mauve-700 shadow">
-    Dashboard
-  </a>
-  <button onclick="history.back()" class="bg-onyx-500 text-white px-4 py-2 rounded hover:bg-onyx-600 shadow">
-    Back
-  </button>
+  <a href="dashboard.html" class="bg-mauve-600 text-white px-4 py-2 rounded hover:bg-mauve-700 shadow">Dashboard</a>
+  <button onclick="history.back()" class="bg-onyx-500 text-white px-4 py-2 rounded hover:bg-onyx-600 shadow">Back</button>
 </div>
 
 <div class="bg-white p-8 rounded-xl shadow-md w-full max-w-5xl space-y-6">
@@ -32,96 +29,79 @@
 </div>
 
 <script>
-  const token = localStorage.getItem("token");
-  if (!token) window.location.href = "/";
+const token = localStorage.getItem("token");
+if (!token) window.location.href = "/";
 
-  function logout() {
-    localStorage.removeItem("token");
-    window.location.href = "/";
-  }
+const subjectFilter = document.getElementById("subject-filter");
+subjectFilter.addEventListener("change", () => fetchReflections(subjectFilter.value));
 
-  const subjectFilter = document.getElementById("subject-filter");
-  subjectFilter.addEventListener("change", () => {
-    fetchReflections(subjectFilter.value);
+async function fetchSubjects() {
+  const res = await fetch(`${API_BASE}/subjects`, {
+    headers: { "Authorization": `Bearer ${token}` }
+  });
+  const subjects = await res.json();
+  subjects.forEach(sub => {
+    const opt = document.createElement("option");
+    opt.value = sub.id;
+    opt.textContent = sub.name;
+    subjectFilter.appendChild(opt);
+  });
+}
+
+async function fetchReflections(subjectId = "") {
+  let url = `${API_BASE}/my-reflections`;
+  if (subjectId) url += `?subject_id=${subjectId}`;
+
+  const res = await fetch(url, {
+    headers: { "Authorization": `Bearer ${token}` }
   });
 
-  async function fetchSubjects() {
-    const res = await fetch(`${API_BASE}/subjects`, {
-      headers: { "Authorization": `Bearer ${token}` }
-    });
-    const subjects = await res.json();
-    const select = document.getElementById("subject-filter");
-    subjects.forEach(sub => {
-      const opt = document.createElement("option");
-      opt.value = sub.id;
-      opt.textContent = sub.name;
-      select.appendChild(opt);
-    });
+  const list = document.getElementById("reflections-list");
+  list.innerHTML = "";
+
+  if (!res.ok) {
+    alert("Failed to load reflections");
+    return;
   }
 
-  async function fetchReflections(subjectId = "") {
-    let url = `${API_BASE}/my-reflections`;
-    if (subjectId) url += `?subject_id=${subjectId}`;
+  const data = await res.json();
+  if (data.length === 0) {
+    list.innerHTML = `<li class="text-gray-500 text-center">No reflections yet.</li>`;
+    return;
+  }
 
-    const res = await fetch(url, {
-      headers: { "Authorization": `Bearer ${token}` }
-    });
+  data.forEach(ref => {
+    const isObsolete = ref.reflection_obsolete || ref.chapter_obsolete || ref.subject_obsolete;
 
-    if (!res.ok) {
-      alert("Failed to load reflections");
-      return;
-    }
+    const videoSrc = ref.video_url.startsWith("http") ? ref.video_url : `${API_BASE}${ref.video_url}`;
+    const chapterTitle = isObsolete
+      ? `<span class="line-through text-gray-400">${ref.chapter}</span> <span class="text-red-500 text-xs ml-1">(Obsolete)</span>`
+      : ref.chapter;
 
-    const data = await res.json();
-    const list = document.getElementById("reflections-list");
+    const item = document.createElement("li");
+    item.className = "p-4 border rounded-lg text-left bg-gray-50";
 
-    if (data.length === 0) {
-      list.innerHTML = `<li class="text-gray-500 text-center">No reflections yet.</li>`;
-      return;
-    }
-
-    list.innerHTML = "";
-
-    data.forEach((ref) => {
-      const videoSrc = ref.video_url.startsWith("http") ? ref.video_url : `${API_BASE}${ref.video_url}`;
-      const isObsolete = ref.obsolete;
-      const chapterTitle = isObsolete
-        ? `<span class="line-through text-gray-400">${ref.chapter}</span> <span class="text-red-500 text-sm">(Obsolete)</span>`
-        : ref.chapter;
-
-      const thumbnail = ref.thumbnail_url ? (ref.thumbnail_url.startsWith("http") ? ref.thumbnail_url : `${API_BASE}${ref.thumbnail_url}`) : null;
-
-      const item = document.createElement("li");
-      item.className = "p-4 border rounded-lg text-left bg-gray-50";
-
-      item.innerHTML = `
-  <div class="bg-white rounded-xl shadow hover:shadow-lg transition overflow-hidden flex flex-col h-full">
-    ${thumbnail ? `
-      <img src="${thumbnail}" class="w-full h-40 object-cover" alt="Video thumbnail">
-    ` : ref.video_url ? `
-      <video class="w-full h-40 object-cover" controls muted preload="metadata">
-        <source src="${videoSrc}" type="video/mp4">
-        Your browser does not support video playback.
-      </video>
-    ` : `
-      <div class="w-full h-40 flex items-center justify-center text-xs text-white bg-gray-800">No video</div>
-    `}
-    <div class="p-4 flex flex-col justify-between flex-grow">
-      <div>
-        <h3 class="text-md font-semibold text-gray-800">Chapter: ${chapterTitle}</h3>
-        <p class="text-xs text-gray-500">Submitted at: ${new Date(ref.submitted_at).toLocaleString()}</p>
+    item.innerHTML = `
+      <div class="bg-white rounded-xl shadow hover:shadow-lg transition overflow-hidden flex flex-col h-full">
+        <video class="w-full h-40 object-cover" controls muted preload="metadata">
+          <source src="${videoSrc}" type="video/mp4">
+          Your browser does not support video playback.
+        </video>
+        <div class="p-4 flex flex-col justify-between flex-grow">
+          <div>
+            <h3 class="text-md font-semibold text-gray-800">Chapter: ${chapterTitle}</h3>
+            <p class="text-xs text-gray-500">Submitted at: ${new Date(ref.submitted_at).toLocaleString()}</p>
+          </div>
+          <p class="mt-2 text-gray-700 text-sm">${ref.summary || "<em class='text-gray-400'>No summary provided.</em>"}</p>
+        </div>
       </div>
-      <p class="mt-2 text-gray-700 text-sm">${ref.summary || "<em class='text-gray-400'>No summary provided.</em>"}</p>
-    </div>
-  </div>
-`;
+    `;
 
-      list.appendChild(item);
-    });
-  }
+    list.appendChild(item);
+  });
+}
 
-  // Initialize
-  fetchSubjects().then(() => fetchReflections());
+fetchSubjects().then(() => fetchReflections());
 </script>
 </body>
 </html>
