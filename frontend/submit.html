@@ -80,7 +80,7 @@
     chapters.forEach(chap => {
       const opt = document.createElement("option");
       opt.value = chap.id;
-      opt.textContent = chap.title;
+      opt.textContent = chap.name;
       chapterSelect.appendChild(opt);
     });
   }
