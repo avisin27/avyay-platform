@@ -130,7 +130,7 @@ frontend/
 | **Soft Delete**      | Logical deletion to preserve audit trail                   |
 | **CI/CD**            | GitHub Actions for PR checks, linting, secret scan         |
 | **Containerization** | Both frontend and backend are fully containerized          |
-| **Kubernetes**       | Hynix cluster with namespace isolation and rolling updates |
+| **Kubernetes**       | Cluster with namespace isolation and rolling updates |
 | **Frontend**         | Pure HTML + Tailwind + JS `fetch` (no frameworks)          |
 
 ---
