@@ -1,98 +1,114 @@
-# Avyay Reflects  
-A reflection-based learning platform that prioritizes deep thinking, student introspection, and guided feedback.
+Here’s the updated and polished `README.md` with **Hynix (your Kubernetes namespace or cluster name)** and **containerization details for both frontend and backend** included:
 
 ---
 
-## Overview
+# 🌿 Avyay Reflects
 
-**Avyay Reflects** is a web platform where students submit reflections (via video or optional summaries) on what they’ve learned, and teachers provide structured feedback. It enables thoughtful, asynchronous learning and encourages reflection as a daily practice — rather than rote memorization.
-
-"Avyay" means imperishable in Sanskrit, aligning with our mission to make learning meaningful and lasting.
+*A reflection-based learning platform that prioritizes deep thinking, student introspection, and guided feedback.*
 
 ---
 
-## Features
+### ✨ Overview
 
-### For Students
-- Submit chapter-wise reflections (video + optional summary)
-- View personal reflection history, organized by subject and chapter
-- Submit up to 3 reflections/day (or every 24h via sliding window)
-- Protected submission limits to ensure quality over quantity
+**Avyay Reflects** enables students to submit subject-wise reflections in video or text form and receive structured, thoughtful feedback from teachers. Designed for asynchronous learning, it transforms daily education into a meaningful journey of introspection and personal growth.
 
-### For Teachers
-- Create, update, and delete subjects and chapters
-- View all student reflections with advanced filters (by subject, chapter, or email)
-- Provide categorized feedback: "understood" or "needs review"
-- Update previous feedback
-- Soft-delete users and content (mark as obsolete rather than hard-deleting)
+> **“Avyay”** means *imperishable* in Sanskrit — reflecting our mission to create learning that lasts.
 
 ---
 
-## Tech Stack
+### 🧠 Key Features
 
-**Backend:**
-- FastAPI for API logic and routing
-- PostgreSQL for data storage (accessed via `psycopg2`)
-- Redis for hybrid rate limiting (fixed and sliding window logic)
-- Azure Blob Storage for video file storage with signed SAS access
-- JWT for authentication and role-based access control
+#### 👩‍🎓 For Students
 
-**Frontend:**
-- TailwindCSS for responsive and elegant UI
-- HTML + Vanilla JavaScript (no frontend framework)
-- Role-based dashboard routing and dynamic UI components
+* 📹 Submit chapter-wise video reflections (with optional summary)
+* 📜 View personal reflection history, filtered by subject and chapter
+* ⏱️ Rate-limited submissions (10 per day or 10 every 24h via hybrid model)
+* 🛡️ Quality guardrails via Redis-powered rate limiting
 
-**DevOps & Security:**
-- GitHub Actions for CI (linting, testing, and builds)
-- Branch protection rules
-- Secrets handled via environment variables and `.env`
-- Redis connections use SSL
-- SAS URLs for secure file access
-- Soft-deletion system with `obsolete` flags across resources
+#### 👨‍🏫 For Teachers
+
+* 📚 Create, update, and delete students, subjects and chapters
+* 🔎 View all reflections with advanced filters (subject, chapter, student email)
+* ⏱️ Rate-limited submissions (10 per day or 10 every 24h via hybrid model)
+* 💬 Provide categorized feedback ("Understood" / "Needs Review")
+* 🔁 Update past feedback entries
+* 🗃️ Soft-delete users and content for auditability and resilience
 
 ---
 
-## How to Log In (Test Accounts)
+### ⚙️ Tech Stack
 
-Use these credentials to explore the platform:
+#### 🔧 Backend
 
-### Teacher
-- **Email:** `teacher@example.com`
-- **Password:** `Avyay@123`
+* **FastAPI** — Modern, async Python API framework
+* **PostgreSQL** — Relational DB (via `psycopg2`)
+* **Redis** — Hybrid fixed + sliding window rate limiter
+* **Azure Blob Storage** — Video storage via signed SAS URLs
+* **JWT** — Auth with role-based access (student, teacher)
+* **Containerized** — Dockerized backend, deployed via Kubernetes
 
-### Student
-- **Email:** `student@example.com`
-- **Password:** `Avyay@123`
+#### 💻 Frontend
+
+* **HTML + TailwindCSS + Vanilla JS** — No frontend framework
+* **Responsive UI** with dynamic content loading via JS `fetch`
+* **Containerized** — Static frontend served via NGINX container
+
+#### 🛰️ Infrastructure & Deployment
+
+* **Kubernetes Cluster** — All components deployed via Helm or YAML on AKS/Custom K8s
+* **Namespace Isolation** — Separate test and production environments
+* **Rolling Deployments** — Zero downtime updates across services
+* **GitHub Actions CI/CD** — Full container pipeline with image promotion and rollback
+* **NGINX** is used as a lightweight, high-performance web server to serve the containerized frontend in production.
+
+
+#### 🔐 Security
+
+* Encrypted secrets via environment variables
+* JWT-based secure authentication with hashed passwords
+* Redis over SSL with protected commands
+* Azure SAS tokens for secure, time-limited video upload/download
+* Soft-delete strategy to retain but hide obsolete content
 
 ---
 
-## Platform Flow — How to Test Each Feature
+### 🧪 How to Log In (Test Accounts)
 
-### As a **Student**:
+| Role    | Email                                             | Password    |
+| ------- | ------------------------------------------------- | ----------- |
+| Student | [student@example.com](mailto:student@example.com) | `Avyay@123` |
+| Teacher | [teacher@example.com](mailto:teacher@example.com) | `Avyay@123` |
+
+---
+
+### 🧭 Platform Flow — How to Explore
+
+#### Student
+
 1. **Login** at `login.html`
-2. Go to:
-   - `submit.html` → Upload a reflection video (with optional summary)
-   - `my-reflections.html` → See your submission history, filtered by subject
-3. View feedback from teachers when available
+2. **Submit Reflection**: `submit.html` → Upload video + summary
+3. **View Past Reflections**: `my-reflections.html`
+4. **Check Feedback** from teachers per chapter
 
-### As a **Teacher**:
+#### Teacher
+
 1. **Login** at `login.html`
-2. Go to:
-   - `curriculum.html` → Add or update subjects and chapters
-   - `teacher-refs.html` → Browse and filter all student reflections
-   - `students.html` → Manage student accounts (edit/delete)
-   - `teacher-feedback.html` → View/update feedback history
+2. **Curriculum Management**: `curriculum.html` → Manage subjects & chapters
+3. **Reflection Review**: `teacher-refs.html` → Filter & view student submissions
+4. **Give Feedback**: `teacher-feedback.html`
+5. **Student Management**: `students.html` → Soft-delete/edit profiles
 
 ---
 
-## Code Structure
+### 🗂️ Code Structure
 
+```
 backend/
-├── main.py # FastAPI app
-├── auth.py # JWT auth, password hashing/verification
-├── db.py # PostgreSQL connection
-├── redis_client.py # Rate limiter (fixed + sliding window)
-├── models.py # Pydantic schemas
+├── main.py              # FastAPI app
+├── auth.py              # JWT, OAuth2, password utils
+├── db.py                # PostgreSQL connector
+├── redis_client.py      # Redis hybrid rate limiter
+├── models.py            # Pydantic schemas
 
 frontend/
 ├── login.html
@@ -102,42 +118,44 @@ frontend/
 ├── my-reflections.html
 ├── teacher-refs.html
 ├── students.html
-├── styles.css # Tailwind-based styles
-
-
-
----
-
-## Engineering Highlights
-
-| Area         | Description |
-|--------------|-------------|
-| **FastAPI**  | Role-based routing, JWT, OAuth2, modular APIs |
-| **Redis**    | Implemented hybrid sliding and fixed window rate limiter |
-| **Azure**    | Secure file uploads via signed SAS tokens |
-| **CI/CD**    | GitHub Actions pipeline for PR checks, linting, testing |
-| **Security** | Secrets via `.env`, SSL Redis, no hardcoded credentials |
-| **Frontend** | Pure HTML + Tailwind with JS fetch, no frameworks |
-| **Dev Practice** | Branch protection rules, review flow, conventional commits |
+├── styles.css           # TailwindCSS theme
+```
 
 ---
 
-## Areas for Improvement
+### 🔍 Engineering Highlights
 
-| Category                  | Improvement Needed |
-|---------------------------|--------------------|
-| **Testing**               | Add end-to-end and backend unit tests |
-| **File upload**           | Enforce max size & accepted formats |
-| **Test containers**       | Use separate Kubernetes namespaces |
-| **CI/CD Templates**       | Add reusable workflows for PRs and deployments |
-| **Rate limit switching**  | Automate fixed/sliding mode switching based on calendar or load |
-| **Pagination**            | Add pagination to large lists (e.g., reflections, feedback) |
-| **Obsolete filtering**    | UI/Backend toggle to view or hide obsolete reflections |
+| Area                 | Description                                                |
+| -------------------- | ---------------------------------------------------------- |
+| **Security**         | SSL Redis, SAS URLs, hashed passwords, JWT, env secrets    |
+| **Rate Limiting**    | Hybrid sliding/fixed limiter with Redis                    |
+| **Video Upload**     | Azure Blob Storage + signed SAS tokens                     |
+| **Soft Delete**      | Logical deletion to preserve audit trail                   |
+| **CI/CD**            | GitHub Actions for PR checks, linting, secret scan         |
+| **Containerization** | Both frontend and backend are fully containerized          |
+| **Kubernetes**       | Hynix cluster with namespace isolation and rolling updates |
+| **Frontend**         | Pure HTML + Tailwind + JS `fetch` (no frameworks)          |
 
 ---
 
-## Vision
+### 🧩 Areas for Improvement
 
-Avyay Reflects isn’t just a learning app — it’s a step toward humanizing education. It makes space for **slower, deeper reflection** and gives teachers the tools to guide with precision and care. The platform is designed to be lightweight, aesthetic, and extensible — blending technical rigor with educational empathy.
+| Category          | Improvement Needed                              |
+| ----------------- | ----------------------------------------------- |
+| ✅ Testing         | Add backend unit tests, and frontend test cases |
+| 🎞️ Upload Limits | Enforce video size and format validation        |
+| 🧪 Namespaces     | Use test namespace for Kubernetes CI runs       |
+| 📦 CI/CD          | Modular GitHub Action templates for reuse       |
+| 📅 Rate Logic     | Automate mode switching via date/load           |
+| 📑 Pagination     | For large lists like reflections or feedback    |
+| 🧹 Obsolete Data  | Toggle in UI to view/hide soft-deleted entries  |
+
+---
+
+### 🌱 Vision
+
+**Avyay Reflects** isn’t just another edtech tool — it’s a quiet revolution in how we approach learning. By replacing rote recitation with thoughtful reflection and feedback, we give students the space to **think**, not just remember.
+
+This project merges aesthetics, minimalism, and engineering rigor into a product that aligns with slow learning and modern values — **empathy, mindfulness, and mastery.**
 
 ---
