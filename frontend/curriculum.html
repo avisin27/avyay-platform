@@ -167,12 +167,15 @@
         body: JSON.stringify({ name })
       });
 
+      console.log("Submitting subject:", { name });
+
       if (res.ok) {
         document.getElementById("new-subject").value = "";
         fetchSubjects();
       } else {
-        alert("Failed to add subject");
-        console.error("Add subject error:", err);
+        const error = await res.json();
+        alert(error.detail || "Failed to add subject");
+        console.error("Add subject error:", error);
       }
     }
 
