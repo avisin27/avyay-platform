@@ -174,8 +174,8 @@ async function fetchReflections(email = "", subjectId = "", chapterId = "") {
           <option value="understood" ${ref.status === "understood" ? "selected" : ""}>Understood</option>
           <option value="needs_review" ${ref.status === "needs_review" ? "selected" : ""}>Needs Review</option>
         </select>
-        <textarea class="comment w-full border px-3 py-2 rounded-lg" maxlength="500" rows="2" placeholder="Comment (optional)">${ref.comment || ""}</textarea>
-        <div class="char-count text-xs text-right text-gray-500">0 / 500</div>
+        <textarea class="comment w-full border px-3 py-2 rounded-lg" maxlength="100" rows="2" placeholder="Comment (optional)">${ref.comment || ""}</textarea>
+        <div class="char-count text-xs text-right text-gray-500">0 / 100</div>
         <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Submit Feedback</button>
       </form>
     `;
@@ -185,11 +185,11 @@ async function fetchReflections(email = "", subjectId = "", chapterId = "") {
     const statusSelect = form.querySelector(".status");
     const charCount = form.querySelector(".char-count");
 
-    charCount.textContent = `${commentInput.value.length} / 500`;
+    charCount.textContent = `${commentInput.value.length} / 100`;
     commentInput.addEventListener("input", () => {
       const len = commentInput.value.length;
-      charCount.textContent = `${len} / 500`;
-      charCount.classList.toggle("text-red-500", len >= 450);
+      charCount.textContent = `${len} / 100`;
+      charCount.classList.toggle("text-red-500", len >= 90);
     });
 
     if (ref.status || ref.comment) {
@@ -200,7 +200,7 @@ async function fetchReflections(email = "", subjectId = "", chapterId = "") {
       e.preventDefault();
       const status = statusSelect.value;
       const comment = commentInput.value.trim();
-      if (comment.length > 500) return alert("Feedback is too long. Maximum 500 characters allowed.");
+      if (comment.length > 100) return alert("Feedback is too long. Maximum 100 characters allowed.");
 
       const fbRes = await fetch(`${API_BASE}/teacher/feedback`, {
         method: "POST",
