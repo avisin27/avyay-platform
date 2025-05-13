@@ -226,25 +226,30 @@ def delete_student(email: str, user=Depends(get_current_user)):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        # Soft delete reflections and feedback
         cur.execute("SELECT id FROM users WHERE email = %s AND role = 'student'", (email,))
         student = cur.fetchone()
         if not student:
             raise HTTPException(status_code=404, detail="Student not found")
         student_id = student[0]
 
-        cur.execute("UPDATE reflections SET obsolete = TRUE WHERE user_id = %s", (student_id,))
+        # Delete all feedback related to the student
         cur.execute("""
-            UPDATE feedback SET obsolete = TRUE 
+            DELETE FROM feedback
             WHERE reflection_id IN (SELECT id FROM reflections WHERE user_id = %s)
         """, (student_id,))
+
+        # Delete all reflections by the student
+        cur.execute("DELETE FROM reflections WHERE user_id = %s", (student_id,))
+
+        # Delete the student account
         cur.execute("DELETE FROM users WHERE id = %s", (student_id,))
 
         conn.commit()
-        return {"message": f"Student {email} and their reflections/feedback marked as obsolete and deleted"}
+        return {"message": f"Student {email} and all their data have been permanently deleted."}
     finally:
         cur.close()
         conn.close()
+
 
 
 class StudentUpdate(BaseModel):
