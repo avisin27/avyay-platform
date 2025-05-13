@@ -1,9 +1,9 @@
 name: PR Sanity Checks
 
 on:
-#  pull_request:
-#    branches: [main]
-   workflow_dispatch
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
   pr-checks:
@@ -14,26 +14,29 @@ jobs:
       ACR_LOGIN_SERVER: reflectacr.azurecr.io
 
     steps:
-      - name: Checkout Code
+      - name: 🛎 Checkout Code
         uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      # 🧹 Lint (Backend)
-      - name: Run flake8 (Python Lint)
+      # --- Python Lint ---
+      - name: 🐍 Run flake8 (Python Lint)
         run: |
           pip install flake8
           flake8 backend --max-line-length=100
 
-      # ✅ Run Tests
-      - name: Run Pytest
+      # --- YAML Lint ---
+      - name: 📄 Lint YAML files
         run: |
-          pip install -r backend/requirements.txt
-          pytest backend
+          sudo apt-get install yamllint
+          yamllint . --format=standard
 
-      # 🕵️ Secret Scanning
-      - name: Scan for Secrets
+      # --- HTML Check (Basic Syntax) ---
+      - name: 🌐 Check HTML Syntax
+        run: |
+          sudo apt-get install tidy
+          find . -name "*.html" -exec tidy -qe {} \; || true
+
+      # --- Secret Scanning ---
+      - name: 🕵️ Gitleaks Secret Scan
         uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

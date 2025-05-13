@@ -1,26 +1,39 @@
-import redis
 import os
+import redis
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
+# Load environment variables
 load_dotenv()
 
-# Get Redis connection parameters from environment variables
-r = redis.Redis(
-    host=os.getenv("REDIS_HOST"),  # No default, must be set in Docker Compose or the environment
-    port=int(os.getenv("REDIS_PORT", 6380)),  # Default to 6380 for Azure Redis SSL
-    password=os.getenv("REDIS_PASS"),  # Redis password from environment (must be set)
-    decode_responses=True,
-    ssl=True  # Enable SSL for secure connection to Azure Redis Cache
-)
+# --- Redis Connection ---
+try:
+    r = redis.Redis(
+        host=os.environ["REDIS_HOST"],
+        port=int(os.getenv("REDIS_PORT", 6380)),  # Default to 6380 for Azure Redis SSL
+        password=os.environ["REDIS_PASS"],
+        decode_responses=True,
+        ssl=True
+    )
+except KeyError as e:
+    raise RuntimeError(f"Missing required Redis env variable: {e}")
+except Exception as e:
+    raise RuntimeError(f"Failed to connect to Redis: {e}")
 
-RATE_LIMIT_MODE = os.getenv("RATE_LIMIT_MODE", "fixed")
+# --- Rate Limiting ---
+RATE_LIMIT_MODE = os.environ.get("RATE_LIMIT_MODE", "fixed")  # "fixed" or "sliding"
 
-def hybrid_rate_limiter(user_id: int, feature: str, limit: int):
+def hybrid_rate_limiter(user_id: int, feature: str, limit: int) -> bool:
     """
-    General-purpose rate limiter for hybrid (fixed/sliding) modes.
-    - feature: "reflection" or "feedback"
-    - limit: number of allowed actions (e.g. 3 reflections, 20 feedback)
+    Hybrid rate limiter supporting both fixed and sliding windows.
+
+    Args:
+        user_id: Unique user ID
+        feature: Action being rate-limited ("reflection", "feedback", etc.)
+        limit: Allowed actions per window
+
+    Returns:
+        True if action is allowed, False if rate-limited.
     """
     now = datetime.utcnow()
     date_key = now.date().isoformat()
@@ -31,24 +44,28 @@ def hybrid_rate_limiter(user_id: int, feature: str, limit: int):
         count = r.get(redis_key_fixed)
         if count and int(count) >= limit:
             return False
-        r.incr(redis_key_fixed, 1)
-        r.expire(redis_key_fixed, 86400)
+        pipeline = r.pipeline()
+        pipeline.incr(redis_key_fixed, 1)
+        pipeline.expire(redis_key_fixed, 86400)  # TTL: 1 day
+        pipeline.execute()
         return True
 
     elif RATE_LIMIT_MODE == "sliding":
-        window = 86400  # 24h window
-        cutoff = int((now - timedelta(seconds=window)).timestamp())
-        current_ts = int(now.timestamp())
+        window = 86400  # 24-hour window
+        now_ts = int(now.timestamp())
+        cutoff_ts = now_ts - window
 
-        # Clean up old timestamps
-        r.zremrangebyscore(redis_key_sliding, 0, cutoff)
-        count = r.zcard(redis_key_sliding)
-        if count >= limit:
+        pipeline = r.pipeline()
+        pipeline.zremrangebyscore(redis_key_sliding, 0, cutoff_ts)
+        pipeline.zcard(redis_key_sliding)
+        results = pipeline.execute()
+        current_count = results[-1]
+
+        if current_count >= limit:
             return False
 
-        # Add current timestamp
-        r.zadd(redis_key_sliding, {str(current_ts): current_ts})
+        r.zadd(redis_key_sliding, {str(now_ts): now_ts})
         return True
 
     else:
-        raise ValueError("Invalid RATE_LIMIT_MODE")
+        raise ValueError(f"Invalid RATE_LIMIT_MODE: {RATE_LIMIT_MODE}")
