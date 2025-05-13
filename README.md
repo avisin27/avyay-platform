@@ -73,8 +73,8 @@
 
 | Role    | Email                                             | Password    |
 | ------- | ------------------------------------------------- | ----------- |
-| Student | [student@example.com](mailto:student@example.com) | `Avyay@123` |
-| Teacher | [teacher@example.com](mailto:teacher@example.com) | `Avyay@123` |
+| Student | [student@reflects.com] | `Myreflects1!` |
+| Teacher | [teacher@reflects.com] | `Myreflects1!` |
 
 ---
 
