@@ -119,28 +119,38 @@
       alert("Edit functionality not implemented yet for: " + email);
     }
 
-    async function deleteStudent(email) {
-      if (!confirm(`Delete student ${email}?`)) return;
+async function deleteStudent(email) {
+  if (!email || typeof email !== "string" || !email.includes("@")) {
+    alert("Invalid email. Cannot delete.");
+    return;
+  }
 
-      try {
-        const res = await fetch(`${API}/delete-user?email=${encodeURIComponent(email)}`, {
-          method: "DELETE",
-          headers: { "Authorization": `Bearer ${token}` }
-        });
+  const confirmDelete = confirm(`Are you sure you want to permanently delete ${email} and all their data?`);
+  if (!confirmDelete) return;
 
-        const data = await res.json();
-
-        if (res.ok) {
-          alert("Student deleted.");
-          fetchStudents();
-        } else {
-          alert(data.detail || "Failed to delete student.");
-        }
-      } catch (err) {
-        alert("Network error.");
-        console.error(err);
+  try {
+    const url = `${API}/delete-user?email=${encodeURIComponent(email)}`;
+    const res = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        "Authorization": `Bearer ${token}`
       }
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      alert("Student deleted successfully.");
+      fetchStudents();
+    } else {
+      alert(data.detail || "Failed to delete student.");
     }
+  } catch (err) {
+    console.error("Network error:", err);
+    alert("Network error while deleting student.");
+  }
+}
+
 
     fetchStudents();
   </script>
