@@ -537,13 +537,26 @@ def get_all_reflections(
         raise HTTPException(status_code=403, detail="Access denied")
 
     query = """
-        SELECT r.id, u.email, r.chapter_id, r.video_url, r.text_summary, r.submitted_at,
-               f.status, f.comment
+        SELECT 
+            r.id, 
+            u.email, 
+            r.chapter_id, 
+            r.video_url, 
+            r.text_summary, 
+            r.submitted_at,
+            f.status, 
+            f.comment,
+            r.obsolete AS reflection_obsolete,
+            c.obsolete AS chapter_obsolete,
+            s.obsolete AS subject_obsolete,
+            c.name AS chapter_name,
+            s.name AS subject_name
         FROM reflections r
         JOIN users u ON r.user_id = u.id
         LEFT JOIN feedback f ON r.id = f.reflection_id
         JOIN chapters c ON r.chapter_id = c.id
-        WHERE r.obsolete = FALSE AND c.obsolete = FALSE AND (f.obsolete = FALSE OR f.obsolete IS NULL)
+        JOIN subjects s ON c.subject_id = s.id
+        WHERE (f.obsolete = FALSE OR f.obsolete IS NULL)
     """
     params = []
 
@@ -560,7 +573,7 @@ def get_all_reflections(
         conn = get_db_connection()
         cur = conn.cursor()
         try:
-            cur.execute("SELECT id FROM chapters WHERE subject_id = %s AND obsolete = FALSE", (subject_id,))
+            cur.execute("SELECT id FROM chapters WHERE subject_id = %s", (subject_id,))
             chapter_ids = [row[0] for row in cur.fetchall()]
         finally:
             cur.close()
@@ -587,10 +600,16 @@ def get_all_reflections(
             "submitted_at": r[5].isoformat(),
             "status": r[6],
             "comment": r[7],
+            "reflection_obsolete": r[8],
+            "chapter_obsolete": r[9],
+            "subject_obsolete": r[10],
+            "chapter_name": r[11],
+            "subject_name": r[12],
         } for r in cur.fetchall()]
     finally:
         cur.close()
         conn.close()
+
 
 
 @app.post("/teacher/feedback")
