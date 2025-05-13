@@ -37,7 +37,7 @@
 
     <input type="file" id="video-file" accept="video/*" class="w-full p-3 border rounded-lg" required />
 
-    <textarea id="summary" rows="5" placeholder="Optional summary..." class="w-full p-3 border rounded-lg"></textarea>
+    <textarea id="summary" rows="5" maxlength="500" placeholder="Optional summary..." class="w-full p-3 border rounded-lg"></textarea>
 
     <button type="submit" id="submit-btn" class="w-full bg-mauve-600 text-white py-2 rounded-lg hover:bg-mauve-700">Submit</button>
   </form>
@@ -100,6 +100,12 @@ document.getElementById("submit-form").addEventListener("submit", async (e) => {
     alert(`File size is too large. Maximum allowed size is ${maxSizeMB}MB.`);
     return;
   }
+
+  const summary = document.getElementById("summary").value;
+if (summary.length > 500) {
+  alert("Summary is too long. Maximum 500 characters allowed.");
+  return;
+}
 
   const formData = new FormData();
   formData.append("chapter_id", chapterSelect.value);

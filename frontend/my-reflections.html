@@ -18,7 +18,7 @@
   </button>
 </div>
 
-<div class="bg-white p-8 rounded-xl shadow-md w-full max-w-xl60 space-y-6">
+<div class="bg-white p-8 rounded-xl shadow-md w-full max-w-5xl space-y-6">
   <h2 class="text-2xl font-bold text-gray-800 text-center">My Reflections</h2>
 
   <div class="mb-4">
@@ -49,13 +49,13 @@
     const res = await fetch(`${API_BASE}/subjects`, {
       headers: { "Authorization": `Bearer ${token}` }
     });
-
     const subjects = await res.json();
+    const select = document.getElementById("subject-filter");
     subjects.forEach(sub => {
       const opt = document.createElement("option");
       opt.value = sub.id;
       opt.textContent = sub.name;
-      subjectFilter.appendChild(opt);
+      select.appendChild(opt);
     });
   }
 
@@ -89,23 +89,27 @@
         ? `<span class="line-through text-gray-400">${ref.chapter}</span> <span class="text-red-500 text-sm">(Obsolete)</span>`
         : ref.chapter;
 
+      const thumbnail = ref.thumbnail_url ? (ref.thumbnail_url.startsWith("http") ? ref.thumbnail_url : `${API_BASE}${ref.thumbnail_url}`) : null;
+
       const item = document.createElement("li");
       item.className = "p-4 border rounded-lg text-left bg-gray-50";
 
-item.innerHTML = `
+      item.innerHTML = `
   <div class="bg-white rounded-xl shadow hover:shadow-lg transition overflow-hidden flex flex-col h-full">
-    ${ref.video_url ? `
-    <video class="w-full h-40 object-cover" controls muted preload="metadata">
-      <source src="${videoSrc}" type="video/mp4">
-      Your browser does not support video playback.
-    </video>
+    ${thumbnail ? `
+      <img src="${thumbnail}" class="w-full h-40 object-cover" alt="Video thumbnail">
+    ` : ref.video_url ? `
+      <video class="w-full h-40 object-cover" controls muted preload="metadata">
+        <source src="${videoSrc}" type="video/mp4">
+        Your browser does not support video playback.
+      </video>
     ` : `
       <div class="w-full h-40 flex items-center justify-center text-xs text-white bg-gray-800">No video</div>
     `}
     <div class="p-4 flex flex-col justify-between flex-grow">
       <div>
-        <h3 class="text-md font-semibold text-gray-800">${chapterTitle}</h3>
-        <p class="text-xs text-gray-500">${new Date(ref.submitted_at).toLocaleString()}</p>
+        <h3 class="text-md font-semibold text-gray-800">Chapter: ${chapterTitle}</h3>
+        <p class="text-xs text-gray-500">Submitted at: ${new Date(ref.submitted_at).toLocaleString()}</p>
       </div>
       <p class="mt-2 text-gray-700 text-sm">${ref.summary || "<em class='text-gray-400'>No summary provided.</em>"}</p>
     </div>
