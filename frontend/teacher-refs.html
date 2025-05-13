@@ -89,7 +89,7 @@ async function populateSubjectsAndChapters() {
     const chapters = await resChap.json();
     subjectChapterMap[sub.id] = chapters;
     chapters.forEach(ch => {
-      chapterMap[ch.id] = ch.title;
+      chapterMap[ch.id] = ch.name;
     });
   }
 
@@ -113,7 +113,7 @@ function refreshChapterDropdown() {
   relevantChapters.forEach(ch => {
     const option = document.createElement("option");
     option.value = ch.id;
-    option.textContent = ch.title;
+    option.textContent = ch.name;
     chapterSelect.appendChild(option);
   });
 }
