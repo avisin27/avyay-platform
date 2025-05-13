@@ -10,7 +10,7 @@
 <body class="bg-cover bg-center min-h-screen flex items-center justify-center"
       style="background-image: url('/images/feed.jpg');">
   <div class="fixed top-4 left-4 space-x-2 z-50">
-   <a href="dashboard.html" class="bg-mauve-600 text-white px-4 py-2 rounded hover:bg-mauve-700 shadow">Dashboard</a>
+    <a href="dashboard.html" class="bg-mauve-600 text-white px-4 py-2 rounded hover:bg-mauve-700 shadow">Dashboard</a>
     <button onclick="history.back()" class="bg-onyx-500 text-white px-4 py-2 rounded hover:bg-onyx-600 shadow">Back</button>
   </div>
 
@@ -18,249 +18,245 @@
     <h1 class="text-2xl font-bold text-center">Teacher Dashboard – All Reflections</h1>
 
     <!-- Filters -->
-<form id="filter-form" class="flex flex-wrap gap-4 justify-center">
-  <select id="email-filter" class="px-4 py-2 border rounded-lg">
-    <option value="">All Students</option>
-  </select>
-  <select id="subject-filter" class="px-4 py-2 border rounded-lg" onchange="onSubjectChange()">
-    <option value="">All Subjects</option>
-  </select>
-  <select id="chapter-filter" class="px-4 py-2 border rounded-lg">
-    <option value="">All Chapters</option>
-  </select>
-  <button type="submit" class="bg-mauve-600 text-white px-6 py-2 rounded-lg hover:bg-mauve-700">Filter</button>
-</form>
-
+    <form id="filter-form" class="flex flex-wrap gap-4 justify-center">
+      <select id="email-filter" class="px-4 py-2 border rounded-lg">
+        <option value="">All Students</option>
+      </select>
+      <select id="subject-filter" class="px-4 py-2 border rounded-lg" onchange="onSubjectChange()">
+        <option value="">All Subjects</option>
+      </select>
+      <select id="chapter-filter" class="px-4 py-2 border rounded-lg">
+        <option value="">All Chapters</option>
+      </select>
+      <button type="submit" class="bg-mauve-600 text-white px-6 py-2 rounded-lg hover:bg-mauve-700">Filter</button>
+    </form>
 
     <!-- Results -->
     <div id="reflection-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
   </div>
 
   <script>
-  const token = localStorage.getItem("token");
-  if (!token) window.location.href = "/";
+    const token = localStorage.getItem("token");
+    if (!token) window.location.href = "/";
 
-  const chapterMap = {};
-  const subjectChapterMap = {}; // Map subjectId => [chapters]
-  const subjectMap = {};
+    const chapterMap = {};
+    const subjectChapterMap = {};
+    const subjectMap = {};
 
-  function renderStaticFeedback(form, status, comment) {
-    const staticFeedback = document.createElement("div");
-    staticFeedback.className = "submitted-feedback space-y-2 mt-2";
+    function renderStaticFeedback(form, status, comment) {
+      const staticFeedback = document.createElement("div");
+      staticFeedback.className = "submitted-feedback space-y-2 mt-2";
+      staticFeedback.innerHTML = `
+        <div class="text-sm text-green-800"><strong>Status:</strong> ${status}</div>
+        <div class="text-sm text-gray-800"><strong>Comment:</strong> ${comment || "(No comment)"}</div>
+        <button class="edit-btn bg-mandrin-500 text-white px-4 py-2 rounded hover:bg-mandrin-600">Edit Feedback</button>
+      `;
+      form.style.display = "none";
+      form.parentNode.insertBefore(staticFeedback, form.nextSibling);
+      staticFeedback.querySelector(".edit-btn").addEventListener("click", () => {
+        form.style.display = "block";
+        staticFeedback.remove();
+      });
+    }
 
-    staticFeedback.innerHTML = `
-      <div class="text-sm text-green-800"><strong>Status:</strong> ${status}</div>
-      <div class="text-sm text-gray-800"><strong>Comment:</strong> ${comment || "(No comment)"}</div>
-      <button class="edit-btn bg-mandrin-500 text-white px-4 py-2 rounded hover:bg-mandrin-600">Edit Feedback</button>
-    `;
-
-    form.style.display = "none";
-    form.parentNode.insertBefore(staticFeedback, form.nextSibling);
-
-    staticFeedback.querySelector(".edit-btn").addEventListener("click", () => {
-      form.style.display = "block";
-      staticFeedback.remove();
-    });
-  }
-
-  async function populateStudentEmails() {
-    const res = await fetch(`${API_BASE}/students/emails`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!res.ok) return;
-    const emails = await res.json();
-    const select = document.getElementById("email-filter");
-    emails.forEach(email => {
-      const option = document.createElement("option");
-      option.value = email;
-      option.textContent = email;
-      select.appendChild(option);
-    });
-  }
-
-  async function populateSubjectsAndChapters() {
-    // Get subjects
-    const resSub = await fetch(`${API_BASE}/subjects`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const subjects = await resSub.json();
-    const subjectSelect = document.getElementById("subject-filter");
-    subjects.forEach(sub => {
-      subjectMap[sub.id] = sub.name;
-      const option = document.createElement("option");
-      option.value = sub.id;
-      option.textContent = sub.name;
-      subjectSelect.appendChild(option);
-    });
-
-    // For each subject, fetch its chapters
-    for (const sub of subjects) {
-      const resChap = await fetch(`${API_BASE}/subjects/${sub.id}/chapters`, {
+    async function populateStudentEmails() {
+      const res = await fetch(`${API_BASE}/students/emails`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      const chapters = await resChap.json();
-      subjectChapterMap[sub.id] = chapters;
-      chapters.forEach(ch => {
-        chapterMap[ch.id] = ch.title;
+      if (!res.ok) return;
+      const emails = await res.json();
+      const select = document.getElementById("email-filter");
+      emails.forEach(email => {
+        const option = document.createElement("option");
+        option.value = email;
+        option.textContent = email;
+        select.appendChild(option);
       });
     }
 
-    refreshChapterDropdown(); // show all initially
-  }
-
-  function refreshChapterDropdown() {
-    const chapterSelect = document.getElementById("chapter-filter");
-    const selectedSubject = document.getElementById("subject-filter").value;
-    chapterSelect.innerHTML = '<option value="">All Chapters</option>';
-
-    let relevantChapters = [];
-    if (selectedSubject && subjectChapterMap[selectedSubject]) {
-      relevantChapters = subjectChapterMap[selectedSubject];
-    } else {
-      // if no subject filter, list all
-      Object.keys(chapterMap).forEach(id => {
-        relevantChapters.push({ id, title: chapterMap[id] });
+    async function populateSubjectsAndChapters() {
+      const resSub = await fetch(`${API_BASE}/subjects`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-    }
+      const subjects = await resSub.json();
+      const subjectSelect = document.getElementById("subject-filter");
+      subjects.forEach(sub => {
+        subjectMap[sub.id] = sub.name;
+        const option = document.createElement("option");
+        option.value = sub.id;
+        option.textContent = sub.name;
+        subjectSelect.appendChild(option);
+      });
 
-    relevantChapters.forEach(ch => {
-      const option = document.createElement("option");
-      option.value = ch.id;
-      option.textContent = ch.title;
-      chapterSelect.appendChild(option);
-    });
-  }
-
-  function onSubjectChange() {
-    refreshChapterDropdown();
-  }
-
-  async function fetchReflections(email = "", subjectId = "", chapterId = "") {
-    let url = `${API_BASE}/all-reflections`;
-    const params = [];
-
-    if (email) params.push(`email=${encodeURIComponent(email)}`);
-    if (chapterId) {
-      params.push(`chapter_id=${chapterId}`);
-    } else if (subjectId && subjectChapterMap[subjectId]) {
-      // Include multiple chapter IDs from the selected subject
-      const ids = subjectChapterMap[subjectId].map(ch => ch.id);
-      params.push(`chapter_id=${ids.join(",")}`); // Backend should support IN filtering
-    }
-
-    if (params.length) url += "?" + params.join("&");
-
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-
-    const list = document.getElementById("reflection-list");
-    list.innerHTML = "";
-
-    if (!res.ok) {
-      list.innerHTML = "<p class='text-red-600'>Error loading reflections.</p>";
-      return;
-    }
-
-    const data = await res.json();
-    if (data.length === 0) {
-      list.innerHTML = "<p class='text-gray-500 text-center'>No reflections found.</p>";
-      return;
-    }
-
-    for (const ref of data) {
-      const card = document.createElement("div");
-      card.className = "flex flex-col justify-between p-6 border rounded-xl bg-white shadow hover:shadow-lg transition";
-
-      const chapterName = chapterMap[ref.chapter_id] || `Chapter ${ref.chapter_id}`;
-      const chapterLabel = `<span class="text-mauve-900 font-medium">${chapterName}</span>`;
-
-      const safeVideoURL = ref.video_url?.startsWith("http")
-        ? ref.video_url
-        : `${API_BASE}${ref.video_url || ""}`;
-
-card.innerHTML = `
-  <div class="font-bold text-gray-800">Student: ${ref.email}</div>
-  <div class="text-sm text-gray-600 mb-2">
-    Chapter: <span class="text-indigo-800 font-medium">${chapterName}</span>
-  </div>
-  ${
-    safeVideoURL
-      ? `<video controls class="w-full rounded-lg mb-2">
-           <source src="${safeVideoURL}" type="video/mp4">
-           Your browser does not support the video tag.
-         </video>`
-      : `<p class="text-red-500 mb-2">No video available.</p>`
-  }
-  <p class="text-gray-700 text-sm">${ref.text_summary || "<em class='text-gray-400'>(No summary)</em>"}</p>
-  <div class="text-xs text-gray-400 mt-1">Submitted: ${new Date(ref.submitted_at).toLocaleString()}</div>
-
-  <hr class="my-4 border-t border-gray-300" />
-
-  <form class="feedback-form space-y-2">
-    <label class="block text-sm font-medium text-gray-700">Feedback</label>
-    <select class="status w-full border px-3 py-2 rounded-lg">
-      <option value="understood" ${ref.status === "understood" ? "selected" : ""}>Understood</option>
-      <option value="needs_review" ${ref.status === "needs_review" ? "selected" : ""}>Needs Review</option>
-    </select>
-    <textarea class="comment w-full border px-3 py-2 rounded-lg" rows="2" placeholder="Comment (optional)">${ref.comment || ""}</textarea>
-    <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Submit Feedback</button>
-  </form>
-`;
-
-
-      const form = card.querySelector(".feedback-form");
-      const commentInput = form.querySelector(".comment");
-      const statusSelect = form.querySelector(".status");
-
-      if (ref.status || ref.comment) {
-        renderStaticFeedback(form, ref.status, ref.comment);
+      for (const sub of subjects) {
+        const resChap = await fetch(`${API_BASE}/subjects/${sub.id}/chapters`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const chapters = await resChap.json();
+        subjectChapterMap[sub.id] = chapters;
+        chapters.forEach(ch => {
+          chapterMap[ch.id] = ch.title;
+        });
       }
 
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const status = statusSelect.value;
-        const comment = commentInput.value;
+      refreshChapterDropdown();
+    }
 
-        const fbRes = await fetch(`${API_BASE}/teacher/feedback`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            reflection_id: ref.id,
-            status,
-            comment
-          })
+    function refreshChapterDropdown() {
+      const chapterSelect = document.getElementById("chapter-filter");
+      const selectedSubject = document.getElementById("subject-filter").value;
+      chapterSelect.innerHTML = '<option value="">All Chapters</option>';
+
+      let relevantChapters = [];
+      if (selectedSubject && subjectChapterMap[selectedSubject]) {
+        relevantChapters = subjectChapterMap[selectedSubject];
+      } else {
+        Object.keys(chapterMap).forEach(id => {
+          relevantChapters.push({ id, title: chapterMap[id] });
         });
+      }
 
-        if (fbRes.ok) {
-          renderStaticFeedback(form, status, comment);
-          alert("Feedback submitted!");
-        } else {
-          const err = await fbRes.json();
-          alert("Error: " + err.detail);
-        }
+      relevantChapters.forEach(ch => {
+        const option = document.createElement("option");
+        option.value = ch.id;
+        option.textContent = ch.title;
+        chapterSelect.appendChild(option);
+      });
+    }
+
+    function onSubjectChange() {
+      refreshChapterDropdown();
+    }
+
+    async function fetchReflections(email = "", subjectId = "", chapterId = "") {
+      let url = `${API_BASE}/all-reflections`;
+      const params = [];
+
+      if (email) params.push(`email=${encodeURIComponent(email)}`);
+      if (chapterId) {
+        params.push(`chapter_id=${chapterId}`);
+      } else if (subjectId && subjectChapterMap[subjectId]) {
+        const ids = subjectChapterMap[subjectId].map(ch => ch.id);
+        params.push(`chapter_id=${ids.join(",")}`);
+      }
+
+      if (params.length) url += "?" + params.join("&");
+
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` }
       });
 
-      list.appendChild(card);
+      const list = document.getElementById("reflection-list");
+      list.innerHTML = "";
+
+      if (!res.ok) {
+        list.innerHTML = "<p class='text-red-600'>Error loading reflections.</p>";
+        return;
+      }
+
+      const data = await res.json();
+      if (data.length === 0) {
+        list.innerHTML = "<p class='text-gray-500 text-center'>No reflections found.</p>";
+        return;
+      }
+
+      for (const ref of data) {
+        const card = document.createElement("div");
+        card.className = "flex flex-col justify-between p-6 border rounded-xl bg-white shadow hover:shadow-lg transition";
+
+        const chapterName = chapterMap[ref.chapter_id] || `Chapter ${ref.chapter_id}`;
+        const safeVideoURL = ref.video_url?.startsWith("http") ? ref.video_url : `${API_BASE}${ref.video_url || ""}`;
+
+        card.innerHTML = `
+          <div class="font-bold text-gray-800">Student: ${ref.email}</div>
+          <div class="text-sm text-gray-600 mb-2">Chapter: <span class="text-indigo-800 font-medium">${chapterName}</span></div>
+          ${
+            safeVideoURL
+              ? `<video controls class="w-full rounded-lg mb-2">
+                   <source src="${safeVideoURL}" type="video/mp4">
+                   Your browser does not support the video tag.
+                 </video>`
+              : `<p class="text-red-500 mb-2">No video available.</p>`
+          }
+          <p class="text-gray-700 text-sm">${ref.text_summary || "<em class='text-gray-400'>(No summary)</em>"}</p>
+          <div class="text-xs text-gray-400 mt-1">Submitted: ${new Date(ref.submitted_at).toLocaleString()}</div>
+          <hr class="my-4 border-t border-gray-300" />
+          <form class="feedback-form space-y-2">
+            <label class="block text-sm font-medium text-gray-700">Feedback</label>
+            <select class="status w-full border px-3 py-2 rounded-lg">
+              <option value="understood" ${ref.status === "understood" ? "selected" : ""}>Understood</option>
+              <option value="needs_review" ${ref.status === "needs_review" ? "selected" : ""}>Needs Review</option>
+            </select>
+            <textarea class="comment w-full border px-3 py-2 rounded-lg" maxlength="500" rows="2" placeholder="Comment (optional)">${ref.comment || ""}</textarea>
+            <div class="char-count text-xs text-right text-gray-500">0 / 500</div>
+            <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Submit Feedback</button>
+          </form>
+        `;
+
+        const form = card.querySelector(".feedback-form");
+        const commentInput = form.querySelector(".comment");
+        const statusSelect = form.querySelector(".status");
+        const charCount = form.querySelector(".char-count");
+
+        charCount.textContent = `${commentInput.value.length} / 500`;
+        commentInput.addEventListener("input", () => {
+          const len = commentInput.value.length;
+          charCount.textContent = `${len} / 500`;
+          charCount.classList.toggle("text-red-500", len >= 450);
+        });
+
+        if (ref.status || ref.comment) {
+          renderStaticFeedback(form, ref.status, ref.comment);
+        }
+
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const status = statusSelect.value;
+          const comment = commentInput.value.trim();
+
+          if (comment.length > 500) {
+            alert("Feedback is too long. Maximum 500 characters allowed.");
+            return;
+          }
+
+          const fbRes = await fetch(`${API_BASE}/teacher/feedback`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              reflection_id: ref.id,
+              status,
+              comment
+            })
+          });
+
+          if (fbRes.ok) {
+            renderStaticFeedback(form, status, comment);
+            alert("Feedback submitted!");
+          } else {
+            const err = await fbRes.json();
+            alert("Error: " + err.detail);
+          }
+        });
+
+        list.appendChild(card);
+      }
     }
-  }
 
-  document.addEventListener("DOMContentLoaded", () => {
-    populateSubjectsAndChapters().then(() => fetchReflections());
-    populateStudentEmails();
+    document.addEventListener("DOMContentLoaded", () => {
+      populateSubjectsAndChapters().then(() => fetchReflections());
+      populateStudentEmails();
 
-    document.getElementById("filter-form").addEventListener("submit", (e) => {
-      e.preventDefault();
-      const email = document.getElementById("email-filter").value;
-      const subjectId = document.getElementById("subject-filter").value;
-      const chapterId = document.getElementById("chapter-filter").value;
-      fetchReflections(email, subjectId, chapterId);
+      document.getElementById("filter-form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const email = document.getElementById("email-filter").value;
+        const subjectId = document.getElementById("subject-filter").value;
+        const chapterId = document.getElementById("chapter-filter").value;
+        fetchReflections(email, subjectId, chapterId);
+      });
     });
-  });
-</script>
-
+  </script>
 </body>
 </html>
