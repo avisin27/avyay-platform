@@ -177,6 +177,7 @@ async function fetchReflections(email = "", subjectId = "", chapterId = "") {
         <textarea class="comment w-full border px-3 py-2 rounded-lg" maxlength="100" rows="2" placeholder="Comment (optional)">${ref.comment || ""}</textarea>
         <div class="char-count text-xs text-right text-gray-500">0 / 100</div>
         <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Submit Feedback</button>
+        <p class="text-xs text-gray-500 text-center">🔔 You can give up to <strong>20 feedbacks per day</strong>.</p>
       </form>
     `;
 
