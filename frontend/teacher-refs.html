@@ -153,16 +153,15 @@ async function fetchReflections(email = "", subjectId = "", chapterId = "") {
     const card = document.createElement("div");
     card.className = "flex flex-col justify-between p-6 border rounded-xl bg-white shadow hover:shadow-lg transition";
 
-    const chapterName = chapterMap[ref.chapter_id] || `Chapter ${ref.chapter_id}`;
-    const subjectEntry = Object.entries(subjectChapterMap).find(([_, chaps]) => chaps.some(c => c.id === ref.chapter_id));
-    const subjectTitle = subjectEntry ? subjectMap[subjectEntry[0]] : "Unknown Subject";
-
+    const isObsolete = ref.reflection_obsolete || ref.chapter_obsolete || ref.subject_obsolete;
+    const chapterName = ref.chapter_name || `Chapter ${ref.chapter_id}`;
+    const subjectTitle = ref.subject_name || "Unknown Subject";
     const safeVideoURL = ref.video_url?.startsWith("http") ? ref.video_url : `${API_BASE}${ref.video_url || ""}`;
 
     card.innerHTML = `
       <div class="font-bold text-gray-800 mb-1">
         👤 Student: ${ref.email}
-        ${ref.obsolete ? `<span class="ml-2 inline-block px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded">Obsolete</span>` : ""}
+        ${isObsolete ? `<span class="ml-2 inline-block px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded">Obsolete</span>` : ""}
       </div>
       <div class="text-sm text-gray-700 mb-2 font-medium">📘 ${subjectTitle} – ${chapterName}</div>
       ${
@@ -171,7 +170,7 @@ async function fetchReflections(email = "", subjectId = "", chapterId = "") {
       <div class="text-xs text-gray-500 mb-1"><strong>Submitted At:</strong> ${new Date(ref.submitted_at).toLocaleString()}</div>
       <p class="text-sm text-gray-700 mb-4"><strong>Video Description:</strong> ${ref.text_summary || "<em class='text-gray-400'>(No summary)</em>"}</p>
       <hr class="my-4 border-t border-gray-300" />
-      ${ref.obsolete ? `<p class="text-sm text-red-500 mt-2 text-center">⚠️ Feedback is disabled for obsolete reflections.</p>` : `
+      ${isObsolete ? `<p class="text-sm text-red-500 mt-2 text-center">⚠️ Feedback is disabled for obsolete reflections.</p>` : `
       <form class="feedback-form space-y-2">
         <label class="block text-sm font-medium text-gray-700">Feedback</label>
         <select class="status w-full border px-3 py-2 rounded-lg">
