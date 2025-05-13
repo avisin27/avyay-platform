@@ -28,6 +28,12 @@
       <select id="chapter-filter" class="px-4 py-2 border rounded-lg">
         <option value="">All Chapters</option>
       </select>
+      
+      <!-- ✅ Add this checkbox here -->
+      <label class="flex items-center space-x-2 text-sm text-gray-700">
+        <input type="checkbox" id="include-obsolete" class="form-checkbox">
+        <span>Include Obsolete</span>
+      </label>
       <button type="submit" class="bg-mauve-600 text-white px-6 py-2 rounded-lg hover:bg-mauve-700">Filter</button>
     </form>
 
@@ -132,6 +138,13 @@ async function fetchReflections(email = "", subjectId = "", chapterId = "") {
     const ids = subjectChapterMap[subjectId].map(ch => ch.id);
     params.push(`chapter_id=${ids.join(",")}`);
   }
+
+  const includeObsolete = document.getElementById("include-obsolete")?.checked;
+  if (includeObsolete) {
+    params.push("include_obsolete=true");
+  }
+
+  
   if (params.length) url += "?" + params.join("&");
 
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
