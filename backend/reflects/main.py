@@ -323,10 +323,20 @@ def get_my_reflections(
     cur = conn.cursor()
     try:
         query = """
-            SELECT r.chapter_id, c.name, r.video_url, r.text_summary, r.submitted_at, r.obsolete
+            SELECT 
+                r.chapter_id, 
+                c.name AS chapter_name, 
+                s.name AS subject_name,
+                r.video_url, 
+                r.text_summary, 
+                r.submitted_at,
+                r.obsolete AS reflection_obsolete,
+                c.obsolete AS chapter_obsolete,
+                s.obsolete AS subject_obsolete
             FROM reflections r
             JOIN chapters c ON r.chapter_id = c.id
-            WHERE r.user_id = %s AND r.obsolete = FALSE AND c.obsolete = FALSE
+            JOIN subjects s ON c.subject_id = s.id
+            WHERE r.user_id = %s
         """
         params = [user["user_id"]]
 
@@ -339,14 +349,18 @@ def get_my_reflections(
 
         return [{
             "chapter": row[1],
-            "video_url": get_sas_url(row[2]),
-            "summary": row[3],
-            "submitted_at": row[4].isoformat(),
-            "obsolete": row[5]
+            "subject": row[2],
+            "video_url": get_sas_url(row[3]),
+            "summary": row[4],
+            "submitted_at": row[5].isoformat(),
+            "reflection_obsolete": row[6],
+            "chapter_obsolete": row[7],
+            "subject_obsolete": row[8]
         } for row in cur.fetchall()]
     finally:
         cur.close()
         conn.close()
+
 
 
 @app.get("/chapters")
