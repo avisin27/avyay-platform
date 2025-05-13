@@ -540,11 +540,14 @@ def get_student_emails(user=Depends(get_current_user)):
         cur.close()
         conn.close()
 
+
+
 @app.get("/all-reflections")
 def get_all_reflections(
     email: Optional[str] = Query(None),
     subject_id: Optional[int] = Query(None),
     chapter_id: Optional[int] = Query(None),
+    include_obsolete: bool = Query(False),  # ✅ new param
     user=Depends(get_current_user)
 ):
     if user["role"] != "teacher":
@@ -574,6 +577,9 @@ def get_all_reflections(
     """
     params = []
 
+    if not include_obsolete:
+        query += " AND r.obsolete = FALSE AND c.obsolete = FALSE AND s.obsolete = FALSE"
+
     if email:
         query += " AND u.email = %s"
         params.append(email)
@@ -583,7 +589,6 @@ def get_all_reflections(
         params.append(chapter_id)
 
     elif subject_id:
-        # Get chapter IDs for this subject
         conn = get_db_connection()
         cur = conn.cursor()
         try:
@@ -594,7 +599,7 @@ def get_all_reflections(
             conn.close()
 
         if not chapter_ids:
-            return []  # No chapters = no reflections
+            return []
 
         query += " AND r.chapter_id = ANY(%s)"
         params.append(chapter_ids)
