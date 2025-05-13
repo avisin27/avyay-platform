@@ -391,9 +391,25 @@ def get_subjects(user=Depends(get_current_user)):
 def create_subject(subject: SubjectCreate, user=Depends(get_current_user)):
     if user["role"] != "teacher":
         raise HTTPException(status_code=403, detail="Only teachers can create subjects")
+    
     conn = get_db_connection()
     cur = conn.cursor()
     try:
+        # Check if subject with same name exists
+        cur.execute("SELECT id, obsolete FROM subjects WHERE name = %s", (subject.name.strip(),))
+        existing = cur.fetchone()
+
+        if existing:
+            subject_id, is_obsolete = existing
+            if is_obsolete:
+                # Revive the obsolete subject
+                cur.execute("UPDATE subjects SET obsolete = FALSE WHERE id = %s", (subject_id,))
+                conn.commit()
+                return {"id": subject_id, "name": subject.name}
+            else:
+                raise HTTPException(status_code=400, detail="Subject with this name already exists.")
+
+        # Otherwise insert new
         cur.execute("INSERT INTO subjects (name) VALUES (%s) RETURNING id", (subject.name.strip(),))
         conn.commit()
         return {"id": cur.fetchone()[0], "name": subject.name}
@@ -403,6 +419,7 @@ def create_subject(subject: SubjectCreate, user=Depends(get_current_user)):
     finally:
         cur.close()
         conn.close()
+
 
 
 @app.patch("/subjects/{subject_id}")
