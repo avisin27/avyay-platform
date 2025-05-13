@@ -279,7 +279,7 @@ def submit_reflection(
     video_file: UploadFile = File(...),
     user=Depends(get_current_user)
 ):
-    if not hybrid_rate_limiter(user["user_id"], "reflection", 30):
+    if not hybrid_rate_limiter(user["user_id"], "reflection", 10):
         raise HTTPException(status_code=429, detail="Reflection rate limit reached.")
 
     file_name = f"{user['user_id']}_{chapter_id}_{video_file.filename}"
