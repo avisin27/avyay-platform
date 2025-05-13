@@ -592,6 +592,10 @@ def get_all_reflections(
 def submit_feedback(data: FeedbackCreate, user=Depends(get_current_user)):
     if user["role"] != "teacher":
         raise HTTPException(status_code=403, detail="Only teachers can give feedback")
+
+    if not hybrid_rate_limiter(user["user_id"], "feedback", 20):
+        raise HTTPException(status_code=429, detail="Feedback rate limit reached.")
+
     conn = get_db_connection()
     cur = conn.cursor()
     try:
@@ -606,6 +610,7 @@ def submit_feedback(data: FeedbackCreate, user=Depends(get_current_user)):
     finally:
         cur.close()
         conn.close()
+
 
 @app.get("/teacher/feedback")
 def get_teacher_feedback(
