@@ -100,8 +100,8 @@ jobs:
           docker push $ACR_LOGIN_SERVER/avyay-backend:rollback || true
       
           # Promote SHA version to latest
-          docker tag $ACR_LOGIN_SERVER/avyay-backend:${{ env.IMAGE_TAG }} $ACR_LOGIN_SERVER/avyay-backend:latest3
-          docker push $ACR_LOGIN_SERVER/avyay-backend:latest3
+          docker tag $ACR_LOGIN_SERVER/avyay-backend:${{ env.IMAGE_TAG }} $ACR_LOGIN_SERVER/avyay-backend:latest
+          docker push $ACR_LOGIN_SERVER/avyay-backend:latest
 
 
       - name: 🗑 Delete Version Tag (Optional Cleanup)
@@ -141,8 +141,8 @@ jobs:
           docker push $ACR_LOGIN_SERVER/avyay-frontend:rollback || true
       
           # Promote versioned image to latest
-          docker tag $ACR_LOGIN_SERVER/avyay-frontend:${{ env.IMAGE_TAG }} $ACR_LOGIN_SERVER/avyay-frontend:latest3
-          docker push $ACR_LOGIN_SERVER/avyay-frontend:latest3
+          docker tag $ACR_LOGIN_SERVER/avyay-frontend:${{ env.IMAGE_TAG }} $ACR_LOGIN_SERVER/avyay-frontend:latest
+          docker push $ACR_LOGIN_SERVER/avyay-frontend:latest
 
       - name: 🗑 Delete Version Tag (Optional Cleanup)
         if: success()
