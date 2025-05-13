@@ -24,7 +24,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 🔐 Login to Azure
+      - name: 🛎️ Checkout Code (if needed for k8 manifests)
+        uses: actions/checkout@v3
+
+      - name: 🔐 Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
@@ -36,20 +39,30 @@ jobs:
           cluster-name: ${{ env.CLUSTER_NAME }}
           resource-group: ${{ env.RESOURCE_GROUP }}
 
-      - name: 🛠 Perform selected action
+      - name: 🧠 Decide and Execute
         run: |
+          echo "➡️ Action selected: ${{ github.event.inputs.action }}"
           if [ "${{ github.event.inputs.action }}" == "rollback" ]; then
-            echo "🌀 Rolling back to last stable backend image..."
-            kubectl set image deployment/avyay-backend avyay-backend=$ACR_LOGIN_SERVER/avyay-backend:rollback -n $NAMESPACE
+            echo "🌀 Rolling back to last stable images..."
+            kubectl set image deployment/avyay-backend avyay-backend=${{ env.ACR_LOGIN_SERVER }}/avyay-backend:rollback -n $NAMESPACE
+            kubectl set image deployment/avyay-frontend avyay-frontend=${{ env.ACR_LOGIN_SERVER }}/avyay-frontend:rollback -n $NAMESPACE
           elif [ "${{ github.event.inputs.action }}" == "deploy" ]; then
             echo "🚀 Deploying latest images..."
-            kubectl set image deployment/avyay-backend avyay-backend=$ACR_LOGIN_SERVER/avyay-backend:latest -n $NAMESPACE
-            kubectl set image deployment/avyay-frontend avyay-frontend=$ACR_LOGIN_SERVER/avyay-frontend:latest -n $NAMESPACE
+            kubectl set image deployment/avyay-backend avyay-backend=${{ env.ACR_LOGIN_SERVER }}/avyay-backend:latest -n $NAMESPACE
+            kubectl set image deployment/avyay-frontend avyay-frontend=${{ env.ACR_LOGIN_SERVER }}/avyay-frontend:latest -n $NAMESPACE
+
+            echo "📦 Applying service and ingress manifests..."
             kubectl apply -f k8/backend-service.yml
             kubectl apply -f k8/frontend-service.yml
             kubectl apply -f k8/backend-ingress.yaml -n $NAMESPACE
             kubectl apply -f k8/frontend-ingress.yaml -n $NAMESPACE
           else
-            echo "❌ Unknown action: ${{ github.event.inputs.action }}"
+            echo "❌ Invalid action input: ${{ github.event.inputs.action }}"
             exit 1
           fi
+
+      - name: 🔄 Wait for Rollout Status
+        run: |
+          echo "🔄 Waiting for deployment rollout to complete..."
+          kubectl rollout status deployment/avyay-backend -n $NAMESPACE
+          kubectl rollout status deployment/avyay-frontend -n $NAMESPACE
