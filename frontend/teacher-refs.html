@@ -47,7 +47,7 @@ function renderStaticFeedback(form, status, comment) {
   const staticFeedback = document.createElement("div");
   staticFeedback.className = "submitted-feedback space-y-2 mt-2";
   staticFeedback.innerHTML = `
-    <div class="text-sm text-green-800"><strong>Status:</strong> ${status}</div>
+    <div class="text-sm text-green-800"><strong>Status:</strong> ${status === "understood" ? "Understood" : status === "needs_review" ? "Needs Review" : status}</div>
     <div class="text-sm text-gray-800"><strong>Comment:</strong> ${comment || "(No comment)"}</div>
     <button class="edit-btn bg-mandrin-500 text-white px-4 py-2 rounded hover:bg-mandrin-600">Edit Feedback</button>
   `;
@@ -171,12 +171,13 @@ async function fetchReflections(email = "", subjectId = "", chapterId = "") {
       <form class="feedback-form space-y-2">
         <label class="block text-sm font-medium text-gray-700">Feedback</label>
         <select class="status w-full border px-3 py-2 rounded-lg">
-          <option value="understood" ${ref.status === "understood" ? "selected" : ""}>Understood</option>
-          <option value="needs_review" ${ref.status === "needs_review" ? "selected" : ""}>Needs Review</option>
+        <option value="understood" ${ref.status === "understood" ? "selected" : ""}>Understood</option>
+        <option value="needs_review" ${ref.status === "needs_review" ? "selected" : ""}>Needs Review</option>
         </select>
-        <textarea class="comment w-full border px-3 py-2 rounded-lg" maxlength="500" rows="2" placeholder="Comment (optional)">${ref.comment || ""}</textarea>
-        <div class="char-count text-xs text-right text-gray-500">0 / 500</div>
+        <textarea class="comment w-full border px-3 py-2 rounded-lg" maxlength="100" rows="2" placeholder="Comment (optional)">${ref.comment || ""}</textarea>
+        <div class="char-count text-xs text-right text-gray-500">0 / 100</div>
         <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Submit Feedback</button>
+        <p class="text-xs text-gray-500 text-center">🔔 You can give up to <strong>20 feedbacks per day</strong>.</p>
       </form>
     `;
 
@@ -185,11 +186,11 @@ async function fetchReflections(email = "", subjectId = "", chapterId = "") {
     const statusSelect = form.querySelector(".status");
     const charCount = form.querySelector(".char-count");
 
-    charCount.textContent = `${commentInput.value.length} / 500`;
+    charCount.textContent = `${commentInput.value.length} / 100`;
     commentInput.addEventListener("input", () => {
       const len = commentInput.value.length;
-      charCount.textContent = `${len} / 500`;
-      charCount.classList.toggle("text-red-500", len >= 450);
+      charCount.textContent = `${len} / 100`;
+      charCount.classList.toggle("text-red-500", len >= 90);
     });
 
     if (ref.status || ref.comment) {
@@ -200,7 +201,7 @@ async function fetchReflections(email = "", subjectId = "", chapterId = "") {
       e.preventDefault();
       const status = statusSelect.value;
       const comment = commentInput.value.trim();
-      if (comment.length > 500) return alert("Feedback is too long. Maximum 500 characters allowed.");
+      if (comment.length > 100) return alert("Feedback is too long. Maximum 100 characters allowed.");
 
       const fbRes = await fetch(`${API_BASE}/teacher/feedback`, {
         method: "POST",

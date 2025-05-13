@@ -37,9 +37,13 @@
 
     <input type="file" id="video-file" accept="video/*" class="w-full p-3 border rounded-lg" required />
 
-    <textarea id="summary" rows="5" maxlength="500" placeholder="Optional summary..." class="w-full p-3 border rounded-lg"></textarea>
+    <textarea id="summary" rows="5" maxlength="200" placeholder="Optional summary..." class="w-full p-3 border rounded-lg"></textarea>
 
     <button type="submit" id="submit-btn" class="w-full bg-mauve-600 text-white py-2 rounded-lg hover:bg-mauve-700">Submit</button>
+      <p class="text-sm text-gray-500 text-center mt-4">
+         🔔 You can submit up to <strong>10 reflections per day</strong>. Make them count!
+      </p>
+
   </form>
 </div>
 
@@ -80,7 +84,7 @@
     chapters.forEach(chap => {
       const opt = document.createElement("option");
       opt.value = chap.id;
-      opt.textContent = chap.title;
+      opt.textContent = chap.name;
       chapterSelect.appendChild(opt);
     });
   }
@@ -102,8 +106,8 @@ document.getElementById("submit-form").addEventListener("submit", async (e) => {
   }
 
   const summary = document.getElementById("summary").value;
-if (summary.length > 500) {
-  alert("Summary is too long. Maximum 500 characters allowed.");
+if (summary.length > 200) {
+  alert("Summary is too long. Maximum 200 characters allowed.");
   return;
 }
 
