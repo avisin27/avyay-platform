@@ -171,8 +171,8 @@ async function fetchReflections(email = "", subjectId = "", chapterId = "") {
       <form class="feedback-form space-y-2">
         <label class="block text-sm font-medium text-gray-700">Feedback</label>
         <select class="status w-full border px-3 py-2 rounded-lg">
-          <option value="understood" ${ref.status === "understood" ? "selected" : ""}>Understood</option>
-          <option value="needs_review" ${ref.status === "needs_review" ? "selected" : ""}>Needs Review</option>
+        <option value="understood" ${ref.status === "understood" ? "selected" : ""}>Understood</option>
+        <option value="needs_review" ${ref.status === "needs_review" ? "selected" : ""}>Needs Review</option>
         </select>
         <textarea class="comment w-full border px-3 py-2 rounded-lg" maxlength="100" rows="2" placeholder="Comment (optional)">${ref.comment || ""}</textarea>
         <div class="char-count text-xs text-right text-gray-500">0 / 100</div>
