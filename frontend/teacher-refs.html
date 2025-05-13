@@ -47,7 +47,7 @@ function renderStaticFeedback(form, status, comment) {
   const staticFeedback = document.createElement("div");
   staticFeedback.className = "submitted-feedback space-y-2 mt-2";
   staticFeedback.innerHTML = `
-    <div class="text-sm text-green-800"><strong>Status:</strong> ${status}</div>
+    <div class="text-sm text-green-800"><strong>Status:</strong> ${status === "understood" ? "Understood" : status === "needs_review" ? "Needs Review" : status}</div>
     <div class="text-sm text-gray-800"><strong>Comment:</strong> ${comment || "(No comment)"}</div>
     <button class="edit-btn bg-mandrin-500 text-white px-4 py-2 rounded hover:bg-mandrin-600">Edit Feedback</button>
   `;
