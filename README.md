@@ -1,6 +1,3 @@
-Here’s the updated and polished `README.md` with **Hynix (your Kubernetes namespace or cluster name)** and **containerization details for both frontend and backend** included:
-
----
 
 # 🌿 Avyay Reflects
 
